@@ -1,0 +1,21 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+genesis.db
+.pytest_cache/
+
+# Node / Vite
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment
+.env
+
+# Editor
+.vscode/
+.idea/
