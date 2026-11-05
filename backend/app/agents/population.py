@@ -404,3 +404,4 @@ def initialize_population() -> List[NPCAgent]:
         agents.append(agent)
         
     return agents
+

@@ -73,3 +73,4 @@ class EmotionalState:
             "arousal": round(self.arousal, 2),
             "intensity": round(self.intensity, 2)
         }
+

@@ -50,3 +50,4 @@ class ReflectionEngine:
         # Reset accumulator
         memory_stream.cumulative_importance_since_reflection = 0.0
         return formed_reflections
+

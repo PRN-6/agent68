@@ -83,3 +83,4 @@ class LLMProvider(ABC):
         current_needs: Dict[str, float]
     ) -> DailyPlan:
         pass
+

@@ -39,3 +39,4 @@ class WeatherSystem:
             "is_rain": self.current_weather["is_rain"],
             "temperature": self.temperature
         }
+

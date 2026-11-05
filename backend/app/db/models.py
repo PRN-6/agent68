@@ -140,3 +140,4 @@ class SimulationStateModel(Base):
     is_running = Column(Boolean, default=True)
     speed = Column(Float, default=1.0)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+

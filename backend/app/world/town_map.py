@@ -38,3 +38,4 @@ class TownMap:
         }
 
 town_map = TownMap()
+

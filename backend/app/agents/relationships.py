@@ -77,3 +77,4 @@ class RelationshipManager:
 
     def get_all(self) -> List[Dict[str, Any]]:
         return [r.to_dict() for r in self.relationships.values()]
+

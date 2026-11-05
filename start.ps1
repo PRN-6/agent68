@@ -24,3 +24,4 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot
 Write-Host "`nProject Genesis is running!" -ForegroundColor Green
 Write-Host "Dashboard: http://localhost:5173" -ForegroundColor Yellow
 Write-Host "Backend API: http://localhost:8000/docs" -ForegroundColor Yellow
+

@@ -224,3 +224,4 @@ def test_simulation_pause_resume(fresh_engine):
 
     fresh_engine.clock.resume()
     assert fresh_engine.clock.is_running is True
+

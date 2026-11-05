@@ -196,3 +196,4 @@ def get_location(location_id: str) -> Optional[Location]:
 
 def get_all_locations() -> List[Location]:
     return list(TOWN_LOCATIONS.values())
+

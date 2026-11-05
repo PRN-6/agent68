@@ -229,3 +229,4 @@ class DeterministicMockProvider(LLMProvider):
             summary=f"{name} altered plans to address: {event_description}",
             steps=new_steps
         )
+

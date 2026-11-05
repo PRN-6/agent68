@@ -73,3 +73,4 @@ class NPCNeeds(BaseModel):
             "hygiene": round(self.hygiene, 1),
             "purpose": round(self.purpose, 1),
         }
+

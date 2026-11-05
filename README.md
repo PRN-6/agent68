@@ -209,3 +209,4 @@ Option B — **Manual Launch**:
 The backend architecture is strictly decoupled from the visualization client:
 - The `/ws/simulation` WebSocket stream broadcasts complete, standardized coordinate and state packets (`x`, `y`, `heading`, `current_activity`, `emotion`, `speech_bubble`, `location_id`).
 - An Unreal Engine 5 client using the official `WebSocket` plugin or C++ socket client can connect directly to `ws://localhost:8000/ws/simulation`, parse the JSON tick stream, and animate 3D Skeletal Meshes with Metahumans in real-time.
+

@@ -111,3 +111,4 @@ class ConversationSession:
             "messages": self.messages,
             "is_completed": self.is_completed
         }
+

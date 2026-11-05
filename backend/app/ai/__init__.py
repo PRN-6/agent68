@@ -17,3 +17,4 @@ def get_ai_provider() -> LLMProvider:
 def set_ai_provider(provider: LLMProvider):
     global _provider_instance
     _provider_instance = provider
+

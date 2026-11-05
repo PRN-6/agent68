@@ -56,3 +56,4 @@ class LocalEmbeddingProvider:
         return float(np.dot(a, b) / (norm_a * norm_b))
 
 embedding_provider = LocalEmbeddingProvider()
+

@@ -95,3 +95,4 @@ class ActionRegistry:
             is_valid=False,
             rejection_reason=f"Unsupported action type: {action.action_type}"
         )
+

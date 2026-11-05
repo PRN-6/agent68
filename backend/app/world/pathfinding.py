@@ -173,3 +173,4 @@ def find_path(start_coord: Tuple[float, float], end_coord: Tuple[float, float]) 
             clean_coords.append(pt)
             
     return clean_coords
+

@@ -56,3 +56,4 @@ class DecisionEngine:
             duration_minutes=20,
             description="Relaxing in place"
         )
+

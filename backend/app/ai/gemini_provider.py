@@ -206,3 +206,4 @@ Output STRICT JSON:
         current_needs: Dict[str, float]
     ) -> DailyPlan:
         return await self.fallback.replan_on_event(npc_data, current_plan, event_description, current_needs)
+

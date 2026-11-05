@@ -100,3 +100,4 @@ class SimulationClock:
             "speed": self.speed_multiplier,
             "total_sim_minutes": self.total_sim_minutes
         }
+

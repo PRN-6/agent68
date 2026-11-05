@@ -122,3 +122,4 @@ class MemoryStream:
 
     def to_dict_list(self) -> List[Dict[str, Any]]:
         return [m.to_dict() for m in self.memories]
+
