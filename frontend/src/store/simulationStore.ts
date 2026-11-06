@@ -7,8 +7,10 @@ interface SimulationStore {
   selectedNpcId: string | null;
   selectedLocationId: string | null;
   activeTab: 'world' | 'npcs' | 'social' | 'timeline';
+  mapTheme: 'the_ville' | 'kenney_urban';
   isMemoryModalOpen: boolean;
   isGodModeOpen: boolean;
+  isTilesetModalOpen: boolean;
   isConnected: boolean;
   npcMemories: Memory[];
   isSearchingMemories: boolean;
@@ -16,11 +18,13 @@ interface SimulationStore {
   // Actions
   setState: (state: SimulationState) => void;
   setMapMetadata: (meta: MapMetadata) => void;
+  setMapTheme: (theme: 'the_ville' | 'kenney_urban') => void;
   setSelectedNpcId: (id: string | null) => void;
   setSelectedLocationId: (id: string | null) => void;
   setActiveTab: (tab: 'world' | 'npcs' | 'social' | 'timeline') => void;
   setIsMemoryModalOpen: (open: boolean) => void;
   setIsGodModeOpen: (open: boolean) => void;
+  setIsTilesetModalOpen: (open: boolean) => void;
   setIsConnected: (connected: boolean) => void;
 
   // API Calls
@@ -39,19 +43,23 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   selectedNpcId: null,
   selectedLocationId: null,
   activeTab: 'world',
+  mapTheme: 'the_ville',
   isMemoryModalOpen: false,
   isGodModeOpen: false,
+  isTilesetModalOpen: false,
   isConnected: false,
   npcMemories: [],
   isSearchingMemories: false,
 
   setState: (state) => set({ state }),
   setMapMetadata: (mapMetadata) => set({ mapMetadata }),
+  setMapTheme: (mapTheme) => set({ mapTheme }),
   setSelectedNpcId: (selectedNpcId) => set({ selectedNpcId }),
   setSelectedLocationId: (selectedLocationId) => set({ selectedLocationId }),
   setActiveTab: (activeTab) => set({ activeTab }),
   setIsMemoryModalOpen: (isMemoryModalOpen) => set({ isMemoryModalOpen }),
   setIsGodModeOpen: (isGodModeOpen) => set({ isGodModeOpen }),
+  setIsTilesetModalOpen: (isTilesetModalOpen) => set({ isTilesetModalOpen }),
   setIsConnected: (isConnected) => set({ isConnected }),
 
   fetchInitialData: async () => {

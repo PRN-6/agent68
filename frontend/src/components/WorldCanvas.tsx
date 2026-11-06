@@ -6,7 +6,16 @@ export const WorldCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const { state, mapMetadata, selectedNpcId, setSelectedNpcId, setSelectedLocationId } = useSimulationStore();
+  const {
+    state,
+    mapMetadata,
+    selectedNpcId,
+    setSelectedNpcId,
+    setSelectedLocationId,
+    mapTheme,
+    setMapTheme,
+    setIsTilesetModalOpen,
+  } = useSimulationStore();
 
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: -600, y: -200 });
   const [zoom, setZoom] = useState<number>(0.55);
@@ -14,33 +23,42 @@ export const WorldCanvas: React.FC = () => {
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showCallouts, setShowCallouts] = useState<boolean>(true);
 
-  // Cached map & sprite images
-  const mapBaseImgRef = useRef<HTMLImageElement | null>(null);
-  const mapForeImgRef = useRef<HTMLImageElement | null>(null);
+  // Cached map & sprite images for both themes (Stanford Smallville & Kenney RPG Urban)
+  const themeImages = useRef<{
+    the_ville: { base: HTMLImageElement | null; fore: HTMLImageElement | null };
+    kenney_urban: { base: HTMLImageElement | null; fore: HTMLImageElement | null };
+  }>({
+    the_ville: { base: null, fore: null },
+    kenney_urban: { base: null, fore: null },
+  });
   const spriteCache = useRef<Map<string, HTMLImageElement>>(new Map());
 
   // Previous NPC positions to determine movement direction
   const prevPositions = useRef<Map<string, { x: number; y: number; dir: string }>>(new Map());
 
-  // Load Smallville Map on Mount (loaded once, kept in memory)
+  // Load Smallville & Kenney Urban Maps on Mount (cached in memory)
   useEffect(() => {
-    const baseImg = new Image();
-    baseImg.src = '/assets/the_ville/the_ville_base.png';
-    baseImg.onload = () => {
-      mapBaseImgRef.current = baseImg;
-    };
-    if (baseImg.complete) {
-      mapBaseImgRef.current = baseImg;
-    }
+    // 1. Stanford The Ville Maps
+    const vBase = new Image();
+    vBase.src = '/assets/the_ville/the_ville_base.png';
+    vBase.onload = () => { themeImages.current.the_ville.base = vBase; };
+    if (vBase.complete) themeImages.current.the_ville.base = vBase;
 
-    const foreImg = new Image();
-    foreImg.src = '/assets/the_ville/the_ville_foreground.png';
-    foreImg.onload = () => {
-      mapForeImgRef.current = foreImg;
-    };
-    if (foreImg.complete) {
-      mapForeImgRef.current = foreImg;
-    }
+    const vFore = new Image();
+    vFore.src = '/assets/the_ville/the_ville_foreground.png';
+    vFore.onload = () => { themeImages.current.the_ville.fore = vFore; };
+    if (vFore.complete) themeImages.current.the_ville.fore = vFore;
+
+    // 2. Kenney RPG Urban Pack Maps
+    const uBase = new Image();
+    uBase.src = '/assets/the_ville/kenney_urban_base.png';
+    uBase.onload = () => { themeImages.current.kenney_urban.base = uBase; };
+    if (uBase.complete) themeImages.current.kenney_urban.base = uBase;
+
+    const uFore = new Image();
+    uFore.src = '/assets/the_ville/kenney_urban_foreground.png';
+    uFore.onload = () => { themeImages.current.kenney_urban.fore = uFore; };
+    if (uFore.complete) themeImages.current.kenney_urban.fore = uFore;
   }, []);
 
   // Preload character sprite sheets as NPCs appear
@@ -112,12 +130,13 @@ export const WorldCanvas: React.FC = () => {
       ctx.translate(pan.x, pan.y);
       ctx.scale(zoom, zoom);
 
-      // 1. Draw Smallville Pixel Art Base Map
-      if (mapBaseImgRef.current && mapBaseImgRef.current.complete) {
-        ctx.drawImage(mapBaseImgRef.current, 0, 0);
+      // 1. Draw Active Pixel Art Base Map (Stanford Smallville or Kenney RPG Urban)
+      const activeBase = themeImages.current[mapTheme]?.base;
+      if (activeBase && activeBase.complete) {
+        ctx.drawImage(activeBase, 0, 0);
       } else {
         // Fallback placeholder while loading
-        ctx.fillStyle = '#7ac943'; // grass green
+        ctx.fillStyle = mapTheme === 'kenney_urban' ? '#56c1a4' : '#7ac943';
         ctx.fillRect(0, 0, 4480, 3200);
       }
 
@@ -254,8 +273,9 @@ export const WorldCanvas: React.FC = () => {
       }
 
       // 3. Draw Foreground Layer (Roofs and tree canopies for depth sorting)
-      if (mapForeImgRef.current && mapForeImgRef.current.complete) {
-        ctx.drawImage(mapForeImgRef.current, 0, 0);
+      const activeFore = themeImages.current[mapTheme]?.fore;
+      if (activeFore && activeFore.complete) {
+        ctx.drawImage(activeFore, 0, 0);
       }
 
       // 4. Day / Night & Weather Atmospheric Lighting Overlay
@@ -465,6 +485,29 @@ export const WorldCanvas: React.FC = () => {
           className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
         >
           🎓 Oak Hill College
+        </button>
+      </div>
+
+      {/* Map Theme Toggle & Kenney Urban Tileset Info */}
+      <div className="absolute top-4 right-4 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/60 shadow-xl text-xs text-slate-300 flex items-center space-x-2 z-10">
+        <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">Map Style:</span>
+        <button
+          onClick={() => setMapTheme(mapTheme === 'the_ville' ? 'kenney_urban' : 'the_ville')}
+          className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg border font-semibold text-xs transition ${
+            mapTheme === 'kenney_urban'
+              ? 'bg-amber-600/30 text-amber-300 border-amber-500/60 shadow-inner'
+              : 'bg-indigo-600/30 text-indigo-300 border-indigo-500/60 shadow-inner'
+          }`}
+          title="Toggle between Stanford Smallville and Kenney RPG Urban Pack"
+        >
+          <span>{mapTheme === 'the_ville' ? '🏛️ Stanford Ville' : '🏙️ Kenney Urban'}</span>
+        </button>
+        <button
+          onClick={() => setIsTilesetModalOpen(true)}
+          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs transition flex items-center space-x-1"
+          title="Inspect Kenney RPG Urban Pack Tileset Atlas"
+        >
+          <span>📦 Kenney Pack</span>
         </button>
       </div>
 

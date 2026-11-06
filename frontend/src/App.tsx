@@ -7,6 +7,7 @@ import { MemoryViewerModal } from './components/MemoryViewerModal';
 import { SocialGraphView } from './components/SocialGraphView';
 import { TimelineView } from './components/TimelineView';
 import { GodModeModal } from './components/GodModeModal';
+import { KenneyTilesetModal } from './components/KenneyTilesetModal';
 import { Users } from 'lucide-react';
 
 export function App() {
@@ -145,6 +146,7 @@ export function App() {
       {/* Modals */}
       <MemoryViewerModal />
       <GodModeModal />
+      <KenneyTilesetModal />
     </div>
   );
 }
