@@ -413,8 +413,8 @@ def initialize_population() -> List[NPCAgent]:
     
     for ident in identities:
         loc = get_location(ident.home_id)
-        init_x = (loc.x + loc.width / 2.0) if loc else 20.0
-        init_y = (loc.y + loc.height / 2.0) if loc else 20.0
+        init_x = loc.walk_x if loc else 20.0
+        init_y = loc.walk_y if loc else 20.0
         
         agent = NPCAgent(identity=ident, initial_x=init_x, initial_y=init_y)
         

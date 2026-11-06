@@ -152,7 +152,7 @@ class NPCAgent:
         if action.action_type == ActionType.MOVE_TO and action.target_location:
             loc = get_location(action.target_location)
             if loc:
-                self.set_destination(loc.x + loc.width / 2.0, loc.y + loc.height / 2.0)
+                self.set_destination(loc.walk_x, loc.walk_y)
                 
         elif action.action_type == ActionType.EAT:
             self.needs.satisfy("hunger", 40.0)

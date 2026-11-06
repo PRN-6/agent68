@@ -1,176 +1,118 @@
-import math
+import os
+import json
+import heapq
+from collections import deque
 from typing import List, Tuple, Dict, Optional
 
-# Waypoints representing key road intersections and building entrances
-WAYPOINTS: Dict[str, Tuple[float, float]] = {
-    # Road network nodes
-    "wp_north_west": (16.0, 8.0),
-    "wp_north_mid": (30.0, 8.0),
-    "wp_north_east": (40.0, 8.0),
-    "wp_north_far_east": (50.0, 8.0),
-    
-    "wp_mid_west": (16.0, 14.0),
-    "wp_plaza_north": (30.0, 14.0),
-    "wp_mid_east": (40.0, 14.0),
-    "wp_mid_far_east": (50.0, 14.0),
-    
-    "wp_plaza_west": (22.0, 20.0),
-    "wp_plaza_center": (30.0, 20.0),
-    "wp_plaza_east": (38.0, 20.0),
-    
-    "wp_south_west": (16.0, 26.0),
-    "wp_south_mid": (30.0, 26.0),
-    "wp_south_east": (40.0, 26.0),
-    "wp_south_far_east": (50.0, 26.0),
-    
-    # Building Entrance Waypoints
-    "ent_home_1": (7.0, 8.0),
-    "ent_home_2": (15.0, 8.0),
-    "ent_home_3": (23.0, 8.0),
-    "ent_home_4": (7.0, 14.0),
-    "ent_home_5": (15.0, 14.0),
-    "ent_home_6": (23.0, 14.0),
-    "ent_home_7": (7.0, 20.0),
-    "ent_home_8": (15.0, 20.0),
-    "ent_home_9": (23.0, 20.0),
-    "ent_home_10": (7.0, 26.0),
-    "ent_home_11": (15.0, 26.0),
-    "ent_home_12": (23.0, 26.0),
-    
-    "ent_town_hall": (42.0, 8.0),
-    "ent_clinic": (52.0, 8.0),
-    "ent_library": (42.0, 14.0),
-    "ent_community_center": (52.0, 14.0),
-    
-    "ent_town_square": (32.0, 20.0),
-    "ent_marketplace": (24.0, 20.0),
-    "ent_general_store": (42.0, 20.0),
-    "ent_workshop": (50.0, 20.0),
-    
-    "ent_bakery": (11.0, 28.0),
-    "ent_tavern": (19.0, 28.0),
-    "ent_bistro": (27.0, 28.0),
-    
-    "ent_park": (36.0, 28.0),
-    "ent_farm": (48.0, 28.0),
-}
+# Load Smallville 140x100 collision grid
+COLLISION_GRID_PATH = os.path.join(os.path.dirname(__file__), "collision_grid.json")
 
-# Graph Adjacency List for Waypoints
-WAYPOINT_GRAPH: Dict[str, List[str]] = {
-    "wp_north_west": ["wp_north_mid", "wp_mid_west", "ent_home_1", "ent_home_2"],
-    "wp_north_mid": ["wp_north_west", "wp_north_east", "wp_plaza_north", "ent_home_3"],
-    "wp_north_east": ["wp_north_mid", "wp_north_far_east", "wp_mid_east", "ent_town_hall"],
-    "wp_north_far_east": ["wp_north_east", "wp_mid_far_east", "ent_clinic"],
-    
-    "wp_mid_west": ["wp_north_west", "wp_plaza_west", "wp_south_west", "ent_home_4", "ent_home_5", "ent_home_6"],
-    "wp_plaza_north": ["wp_north_mid", "wp_plaza_center", "wp_plaza_west", "wp_plaza_east"],
-    "wp_mid_east": ["wp_north_east", "wp_plaza_east", "wp_south_east", "ent_library"],
-    "wp_mid_far_east": ["wp_north_far_east", "wp_south_far_east", "ent_community_center"],
-    
-    "wp_plaza_west": ["wp_mid_west", "wp_plaza_center", "ent_marketplace", "ent_home_7", "ent_home_8", "ent_home_9"],
-    "wp_plaza_center": ["wp_plaza_north", "wp_plaza_west", "wp_plaza_east", "wp_south_mid", "ent_town_square"],
-    "wp_plaza_east": ["wp_plaza_center", "wp_mid_east", "ent_general_store", "ent_workshop"],
-    
-    "wp_south_west": ["wp_mid_west", "wp_south_mid", "ent_bakery", "ent_tavern", "ent_home_10", "ent_home_11", "ent_home_12"],
-    "wp_south_mid": ["wp_plaza_center", "wp_south_west", "wp_south_east", "ent_bistro", "ent_park"],
-    "wp_south_east": ["wp_mid_east", "wp_south_mid", "wp_south_far_east", "ent_park"],
-    "wp_south_far_east": ["wp_mid_far_east", "wp_south_east", "ent_farm"],
-    
-    # Entrances to nodes
-    "ent_home_1": ["wp_north_west"],
-    "ent_home_2": ["wp_north_west"],
-    "ent_home_3": ["wp_north_mid"],
-    "ent_home_4": ["wp_mid_west"],
-    "ent_home_5": ["wp_mid_west"],
-    "ent_home_6": ["wp_mid_west"],
-    "ent_home_7": ["wp_plaza_west"],
-    "ent_home_8": ["wp_plaza_west"],
-    "ent_home_9": ["wp_plaza_west"],
-    "ent_home_10": ["wp_south_west"],
-    "ent_home_11": ["wp_south_west"],
-    "ent_home_12": ["wp_south_west"],
-    
-    "ent_town_hall": ["wp_north_east"],
-    "ent_clinic": ["wp_north_far_east"],
-    "ent_library": ["wp_mid_east"],
-    "ent_community_center": ["wp_mid_far_east"],
-    
-    "ent_town_square": ["wp_plaza_center"],
-    "ent_marketplace": ["wp_plaza_west"],
-    "ent_general_store": ["wp_plaza_east"],
-    "ent_workshop": ["wp_plaza_east"],
-    
-    "ent_bakery": ["wp_south_west"],
-    "ent_tavern": ["wp_south_west"],
-    "ent_bistro": ["wp_south_mid"],
-    "ent_park": ["wp_south_mid", "wp_south_east"],
-    "ent_farm": ["wp_south_far_east"],
-}
+GRID: List[List[int]] = []
+H = 100
+W = 140
 
-def euclidean_dist(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
-    return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+if os.path.exists(COLLISION_GRID_PATH):
+    try:
+        with open(COLLISION_GRID_PATH, "r", encoding="utf-8") as f:
+            GRID = json.load(f)
+            H = len(GRID)
+            W = len(GRID[0])
+    except Exception as e:
+        print(f"Error loading collision_grid.json: {e}")
 
-def find_nearest_waypoint(coord: Tuple[float, float]) -> str:
-    best_wp = "wp_plaza_center"
-    best_dist = float("inf")
-    for wp, pt in WAYPOINTS.items():
-        dist = euclidean_dist(coord, pt)
-        if dist < best_dist:
-            best_dist = dist
-            best_wp = wp
-    return best_wp
+# Fallback empty grid if file was not loaded
+if not GRID:
+    GRID = [[0 for _ in range(W)] for _ in range(H)]
+
+# Path cache for rapid reuse
+_PATH_CACHE: Dict[Tuple[int, int, int, int], List[Tuple[float, float]]] = {}
+_MAX_CACHE_SIZE = 1000
+
+def is_walkable(x: int, y: int) -> bool:
+    if 0 <= x < W and 0 <= y < H:
+        return GRID[y][x] == 0
+    return False
+
+def find_nearest_walkable(x: float, y: float) -> Tuple[int, int]:
+    """Finds the nearest walkable tile if coordinate is on an obstacle or out of bounds."""
+    ix = max(0, min(W - 1, int(round(x))))
+    iy = max(0, min(H - 1, int(round(y))))
+
+    if is_walkable(ix, iy):
+        return (ix, iy)
+
+    queue = deque([(ix, iy)])
+    visited = {(ix, iy)}
+
+    while queue:
+        cx, cy = queue.popleft()
+        if is_walkable(cx, cy):
+            return (cx, cy)
+
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            nx, ny = cx + dx, cy + dy
+            if 0 <= nx < W and 0 <= ny < H and (nx, ny) not in visited:
+                visited.add((nx, ny))
+                queue.append((nx, ny))
+
+    return (ix, iy)
 
 def find_path(start_coord: Tuple[float, float], end_coord: Tuple[float, float]) -> List[Tuple[float, float]]:
-    """Dijkstra/A* to find smooth path coordinates between any two points."""
-    start_wp = find_nearest_waypoint(start_coord)
-    end_wp = find_nearest_waypoint(end_coord)
-    
-    if start_wp == end_wp:
-        return [start_coord, end_coord]
-        
-    # Dijkstra
-    dist: Dict[str, float] = {wp: float("inf") for wp in WAYPOINTS}
-    parent: Dict[str, Optional[str]] = {wp: None for wp in WAYPOINTS}
-    dist[start_wp] = 0.0
-    
-    unvisited = set(WAYPOINTS.keys())
-    
-    while unvisited:
-        # Node with smallest distance
-        current = min(unvisited, key=lambda wp: dist[wp])
-        if dist[current] == float("inf"):
-            break
-        if current == end_wp:
-            break
-        unvisited.remove(current)
-        
-        for neighbor in WAYPOINT_GRAPH.get(current, []):
-            if neighbor not in unvisited:
-                continue
-            d = dist[current] + euclidean_dist(WAYPOINTS[current], WAYPOINTS[neighbor])
-            if d < dist[neighbor]:
-                dist[neighbor] = d
-                parent[neighbor] = current
-                
-    # Reconstruct path
-    wp_path = []
-    curr = end_wp
-    while curr is not None:
-        wp_path.append(curr)
-        curr = parent[curr]
-    wp_path.reverse()
-    
-    # Convert waypoints to coordinates
-    coords = [start_coord]
-    for wp in wp_path:
-        coords.append(WAYPOINTS[wp])
-    coords.append(end_coord)
-    
-    # Simplify duplicate sequential coords
-    clean_coords = [coords[0]]
-    for pt in coords[1:]:
-        if euclidean_dist(clean_coords[-1], pt) > 0.05:
-            clean_coords.append(pt)
-            
-    return clean_coords
+    """A* Pathfinding over Smallville 140x100 collision grid.
+    Guarantees NPCs never walk through walls, fences, counters, or buildings.
+    """
+    sx, sy = find_nearest_walkable(start_coord[0], start_coord[1])
+    gx, gy = find_nearest_walkable(end_coord[0], end_coord[1])
 
+    if sx == gx and sy == gy:
+        return [(float(gx), float(gy))]
+
+    cache_key = (sx, sy, gx, gy)
+    if cache_key in _PATH_CACHE:
+        return list(_PATH_CACHE[cache_key])
+
+    def heuristic(x: int, y: int) -> int:
+        return abs(x - gx) + abs(y - gy)
+
+    # Priority queue: (f_score, g_score, (x, y))
+    frontier = [(heuristic(sx, sy), 0, (sx, sy))]
+    came_from: Dict[Tuple[int, int], Optional[Tuple[int, int]]] = {(sx, sy): None}
+    cost_so_far: Dict[Tuple[int, int], int] = {(sx, sy): 0}
+
+    found = False
+    while frontier:
+        _, current_cost, current = heapq.heappop(frontier)
+
+        if current == (gx, gy):
+            found = True
+            break
+
+        cx, cy = current
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            nx, ny = cx + dx, cy + dy
+            if is_walkable(nx, ny):
+                new_cost = current_cost + 1
+                if (nx, ny) not in cost_so_far or new_cost < cost_so_far[(nx, ny)]:
+                    cost_so_far[(nx, ny)] = new_cost
+                    priority = new_cost + heuristic(nx, ny)
+                    heapq.heappush(frontier, (priority, new_cost, (nx, ny)))
+                    came_from[(nx, ny)] = current
+
+    if not found:
+        # Fallback to direct snapped points
+        return [(float(sx), float(sy)), (float(gx), float(gy))]
+
+    # Reconstruct path
+    curr = (gx, gy)
+    path: List[Tuple[float, float]] = []
+    while curr is not None:
+        path.append((float(curr[0]), float(curr[1])))
+        curr = came_from[curr]
+    path.reverse()
+
+    # Save to cache
+    if len(_PATH_CACHE) > _MAX_CACHE_SIZE:
+        _PATH_CACHE.clear()
+    _PATH_CACHE[cache_key] = path
+
+    return path

@@ -97,6 +97,8 @@ export interface LocationItem {
   y: number;
   width: number;
   height: number;
+  walk_x?: number;
+  walk_y?: number;
   capacity: number;
   description: string;
   objects: string[];
