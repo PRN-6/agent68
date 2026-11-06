@@ -54,11 +54,17 @@ class Planner:
         self.schedule.sort(key=lambda s: s.start_minute_of_day)
 
     def get_current_step(self, sim_hour: int, sim_minute: int) -> Optional[ScheduleItem]:
-        current_minute_of_day = sim_hour * 60 + sim_minute
+        if not self.schedule:
+            return None
+        current_minute_of_day = (sim_hour % 24) * 60 + sim_minute
         for item in self.schedule:
             if item.start_minute_of_day <= current_minute_of_day < item.end_minute_of_day:
                 return item
-        return self.schedule[-1] if self.schedule else None
+        # If between steps or end of day, find the closest active item
+        for item in reversed(self.schedule):
+            if current_minute_of_day >= item.start_minute_of_day:
+                return item
+        return self.schedule[0]
 
     async def handle_unexpected_event(
         self,

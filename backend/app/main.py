@@ -229,7 +229,7 @@ async def inject_event(req: InjectEventRequest):
         location_id=req.location_id,
         significance=req.significance
     )
-    return {"status": "event_injected", "event": event.dict()}
+    return {"status": "event_injected", "event": event.model_dump()}
 
 # WebSocket Connection
 @app.websocket("/ws/simulation")

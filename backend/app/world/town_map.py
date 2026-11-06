@@ -27,7 +27,7 @@ class TownMap:
             "width": self.width,
             "height": self.height,
             "roads": self.roads,
-            "locations": [loc.dict() for loc in get_all_locations()],
+            "locations": [loc.model_dump() for loc in get_all_locations()],
             "districts": [
                 {"name": "Residential Quarter", "bounds": {"x": 2, "y": 2, "w": 24, "h": 25}, "color": "rgba(99, 102, 241, 0.08)"},
                 {"name": "Civic & Medical Center", "bounds": {"x": 38, "y": 2, "w": 20, "h": 14}, "color": "rgba(59, 130, 246, 0.08)"},

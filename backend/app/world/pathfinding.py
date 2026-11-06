@@ -28,10 +28,24 @@ if not GRID:
 _PATH_CACHE: Dict[Tuple[int, int, int, int], List[Tuple[float, float]]] = {}
 _MAX_CACHE_SIZE = 1000
 
-def is_walkable(x: int, y: int) -> bool:
-    if 0 <= x < W and 0 <= y < H:
-        return GRID[y][x] == 0
+def is_walkable(x: float | int, y: float | int) -> bool:
+    ix, iy = int(round(x)), int(round(y))
+    if 0 <= ix < W and 0 <= iy < H:
+        return GRID[iy][ix] == 0
     return False
+
+def get_walkable_tiles_in_bounds(min_x: float, min_y: float, max_x: float, max_y: float) -> List[Tuple[int, int]]:
+    """Returns list of all walkable (x, y) coordinates within given bounding box."""
+    x0 = max(0, int(min_x))
+    x1 = min(W, int(max_x) + 1)
+    y0 = max(0, int(min_y))
+    y1 = min(H, int(max_y) + 1)
+    tiles = []
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            if GRID[y][x] == 0:
+                tiles.append((x, y))
+    return tiles
 
 def find_nearest_walkable(x: float, y: float) -> Tuple[int, int]:
     """Finds the nearest walkable tile if coordinate is on an obstacle or out of bounds."""

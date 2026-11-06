@@ -149,7 +149,7 @@ TOWN_LOCATIONS: Dict[str, Location] = {
     ),
     "home_moreno": Location(
         id="home_moreno", name="Moreno Family's House", zone="residential",
-        x=68.0, y=64.0, width=14.0, height=19.0, capacity=4,
+        x=68.0, y=64.0, width=14.0, height=19.0, walk_x=72.0, walk_y=74.0, capacity=4,
         description="Warm brick home filled with family portraits and baking aromas.",
         objects=["dining_table", "fireplace", "study_nook"],
         color="#F97316", icon="home"

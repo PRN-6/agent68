@@ -108,10 +108,10 @@ class SimulationEngine:
         # Check locations with 2+ free agents and trigger spontaneous dialogue
         if self.clock.tick_count % 3 == 0:  # Check periodically
             for loc_id, agents_at_loc in npcs_by_location.items():
-                if len(agents_at_loc) >= 2 and loc_id not in ("home_1", "home_2", "home_3", "home_4"):
+                if len(agents_at_loc) >= 2 and not loc_id.startswith("home_"):
                     available = [
                         a for a in agents_at_loc
-                        if not a.path_queue and a.current_activity in ("Relaxed", "Idle", "Taking a break", f"At {loc_id}")
+                        if not a.path_queue and "sleep" not in a.current_activity.lower() and "talk" not in a.current_activity.lower()
                     ]
                     if len(available) >= 2 and random.random() < 0.25:
                         p1, p2 = random.sample(available, 2)
@@ -125,6 +125,10 @@ class SimulationEngine:
                                 "town history and local news"
                             ]
                             chosen_topic = random.choice(topic_pool)
+                            p1.current_activity = f"Talking with {p2.name.split()[0]}"
+                            p2.current_activity = f"Talking with {p1.name.split()[0]}"
+                            p1.action_minutes_remaining = 8
+                            p2.action_minutes_remaining = 8
                             session = ConversationSession(p1, p2, loc_id, sim_minute, topic=chosen_topic)
                             self.active_conversations.append(session)
                             await session.execute_dialogue(max_turns=3)

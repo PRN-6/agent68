@@ -20,14 +20,16 @@ class DeterministicMockProvider(LLMProvider):
         name = npc_data.get("name", "Inhabitant")
 
         steps = [
+            PlanStep(start_hour=0, start_minute=0, duration_minutes=420, activity="Night rest and sleep", location=home, description="Restful sleep at home."),
             PlanStep(start_hour=7, start_minute=0, duration_minutes=60, activity="Morning routine and breakfast", location=home, description="Wake up, stretch, and prepare a hearty breakfast."),
             PlanStep(start_hour=8, start_minute=0, duration_minutes=30, activity="Commute to work", location=work, description="Walk briskly towards the workplace, observing the town square."),
             PlanStep(start_hour=8, start_minute=30, duration_minutes=210, activity=f"Focus on {occ} duties", location=work, description=f"Perform daily professional work as a {occ}."),
-            PlanStep(start_hour=12, start_minute=0, duration_minutes=60, activity="Lunch break and socialize", location="bakery" if occ != "baker" else "town_square", description="Enjoy a warm meal and greet fellow townspeople."),
+            PlanStep(start_hour=12, start_minute=0, duration_minutes=60, activity="Lunch break and socialize", location="cafe" if occ != "baker" else "market", description="Enjoy a warm meal and greet fellow townspeople."),
             PlanStep(start_hour=13, start_minute=0, duration_minutes=240, activity="Afternoon responsibilities", location=work, description="Complete afternoon tasks and wrap up pending projects."),
-            PlanStep(start_hour=17, start_minute=0, duration_minutes=90, activity="Evening stroll or visit tavern", location="tavern", description="Unwind with colleagues, drink cider, and catch up on town news."),
+            PlanStep(start_hour=17, start_minute=0, duration_minutes=90, activity="Evening stroll or visit tavern", location="pub", description="Unwind with colleagues, drink cider, and catch up on town news."),
             PlanStep(start_hour=18, start_minute=30, duration_minutes=90, activity="Dinner and personal hobbies", location=home, description="Cook evening dinner, read, and reflect on the day."),
-            PlanStep(start_hour=22, start_minute=0, duration_minutes=480, activity="Night rest and sleep", location=home, description="Get full restorative sleep.")
+            PlanStep(start_hour=20, start_minute=0, duration_minutes=120, activity="Evening relaxation and reading", location=home, description="Relax at home with a good book and tea."),
+            PlanStep(start_hour=22, start_minute=0, duration_minutes=120, activity="Night rest and sleep", location=home, description="Head to bed for full restorative sleep.")
         ]
 
         summary = f"{name}'s daily routine: morning preparation at {home}, core {occ} duties at {work}, midday social lunch, and evening relaxation."
@@ -49,11 +51,11 @@ class DeterministicMockProvider(LLMProvider):
 
         # 1. Critical Need Overrides
         if needs.get("hunger", 100.0) < 20.0:
-            target = "bakery" if current_loc != "bakery" else current_loc
-            if current_loc != "bakery" and current_loc != home:
+            target = "cafe" if current_loc != "cafe" else current_loc
+            if current_loc != "cafe" and current_loc != home:
                 return DecisionOutput(
                     thought="My stomach is growling loudly. I need to get food immediately.",
-                    action=SimulationAction(action_type=ActionType.MOVE_TO, target_location="bakery", duration_minutes=15, description="Walking to bakery for food"),
+                    action=SimulationAction(action_type=ActionType.MOVE_TO, target_location="cafe", duration_minutes=25, description="Walking to cafe for food"),
                     emotion_update="Hungry"
                 )
             else:
@@ -67,18 +69,23 @@ class DeterministicMockProvider(LLMProvider):
             if current_loc != home:
                 return DecisionOutput(
                     thought="Exhaustion is overwhelming me. I must return home to rest.",
-                    action=SimulationAction(action_type=ActionType.MOVE_TO, target_location=home, duration_minutes=20, description="Returning home to sleep"),
+                    action=SimulationAction(action_type=ActionType.MOVE_TO, target_location=home, duration_minutes=25, description="Returning home to sleep"),
                     emotion_update="Tired"
                 )
             else:
                 return DecisionOutput(
                     thought="Heading to bed to recover my energy.",
-                    action=SimulationAction(action_type=ActionType.REST, target_location=home, duration_minutes=120, description="Deep restful sleep"),
+                    action=SimulationAction(action_type=ActionType.REST, target_location=home, duration_minutes=60, description="Deep restful sleep"),
                     emotion_update="Relaxed"
                 )
 
-        # 2. Social Opportunity if someone is nearby and social need is moderate
-        if nearby_npcs and needs.get("social", 100.0) < 50.0:
+        # 2. Social Opportunity if someone is nearby
+        # Prompt conversation if social need is low, or feeling lonely, or at current location / free time
+        is_social_urgent = needs.get("social", 100.0) < 50.0 or emotion == "Lonely"
+        needs_travel = current_plan_step is not None and current_loc != current_plan_step.get("location", work)
+        
+        # Converse if someone is nearby AND (we don't need to commute elsewhere OR social need is urgent)
+        if nearby_npcs and (is_social_urgent or not needs_travel or current_plan_step is None):
             target_npc = nearby_npcs[0]
             target_id = target_npc.get("id")
             target_name = target_npc.get("name", "fellow townsfolk")
@@ -93,30 +100,38 @@ class DeterministicMockProvider(LLMProvider):
                 emotion_update="Curious"
             )
 
-        # 3. Follow Plan Step
+        # 3. Follow Plan Step (Primary Schedule Driver)
         if current_plan_step:
             target_loc = current_plan_step.get("location", work)
             activity = current_plan_step.get("activity", "Work")
             if current_loc != target_loc:
                 return DecisionOutput(
                     thought=f"According to my schedule, I should be at {target_loc} for {activity}.",
-                    action=SimulationAction(action_type=ActionType.MOVE_TO, target_location=target_loc, duration_minutes=15, description=f"Traveling to {target_loc}"),
+                    action=SimulationAction(action_type=ActionType.MOVE_TO, target_location=target_loc, duration_minutes=25, description=f"Traveling to {target_loc}"),
                     emotion_update="Focused"
                 )
             else:
-                # In the right place, do the activity
-                if "work" in activity.lower():
+                act_lower = activity.lower()
+                # In the right place, do the scheduled activity
+                if "work" in act_lower or "duties" in act_lower or "responsibilities" in act_lower:
                     act_type = ActionType.WORK
-                elif "rest" in activity.lower() or "sleep" in activity.lower():
+                elif "rest" in act_lower or "sleep" in act_lower:
                     act_type = ActionType.REST
-                elif "lunch" in activity.lower() or "breakfast" in activity.lower() or "dinner" in activity.lower():
+                elif "lunch" in act_lower or "breakfast" in act_lower or "dinner" in act_lower or "eat" in act_lower:
                     act_type = ActionType.EAT
                 else:
                     act_type = ActionType.RELAX
 
+                # Keep action chunks to responsive durations (25-30 mins) so agents don't freeze indefinitely
+                chunk_duration = min(30, current_plan_step.get("duration_minutes", 30))
                 return DecisionOutput(
                     thought=f"Executing planned activity: {activity}",
-                    action=SimulationAction(action_type=act_type, target_location=current_loc, duration_minutes=current_plan_step.get("duration_minutes", 30), description=activity),
+                    action=SimulationAction(
+                        action_type=act_type,
+                        target_location=current_loc,
+                        duration_minutes=chunk_duration,
+                        description=activity
+                    ),
                     emotion_update="Relaxed"
                 )
 

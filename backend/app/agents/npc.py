@@ -1,4 +1,5 @@
 import math
+import random
 from typing import Dict, Any, List, Optional, Tuple
 from app.agents.identity import NPCIdentity
 from app.agents.needs import NPCNeeds
@@ -9,7 +10,7 @@ from app.agents.relationships import RelationshipManager
 from app.agents.decision import DecisionEngine
 from app.agents.reflection import ReflectionEngine
 from app.core.actions import SimulationAction, ActionType
-from app.world.pathfinding import find_path
+from app.world.pathfinding import find_path, get_walkable_tiles_in_bounds
 from app.world.locations import get_location
 
 class NPCAgent:
@@ -34,6 +35,10 @@ class NPCAgent:
         self.path_queue: List[Tuple[float, float]] = []
         self.wealth: float = 120.0
         self.last_decision_minute: int = -1
+        self.micro_wander_timer: int = random.randint(10, 25)
+        self.last_sim_hour: int = 7
+        self.last_sim_minute: int = 0
+        self._last_plan_step_key: Optional[str] = None
 
     def get_profile_dict(self) -> Dict[str, Any]:
         return {
@@ -82,6 +87,21 @@ class NPCAgent:
             self.y += (dy / dist) * speed
             return False
 
+    def _perform_ambient_micro_move(self):
+        """Pick a nearby walkable tile within current location to simulate lively human movement."""
+        loc = get_location(self.current_location)
+        if not loc:
+            return
+        
+        walkable_tiles = get_walkable_tiles_in_bounds(loc.x, loc.y, loc.x + loc.width, loc.y + loc.height)
+        if not walkable_tiles:
+            return
+            
+        candidates = [t for t in walkable_tiles if math.hypot(t[0] - self.x, t[1] - self.y) >= 1.5]
+        if candidates:
+            target = random.choice(candidates)
+            self.set_destination(float(target[0]), float(target[1]))
+
     async def update_tick(
         self,
         sim_minute: int,
@@ -92,6 +112,9 @@ class NPCAgent:
         known_locations: List[str]
     ):
         """Simulation tick: handles biological needs decay, path movement, and reasoning checks."""
+        self.last_sim_hour = sim_hour
+        self.last_sim_minute = sim_minute
+
         # 1. Biological needs decay
         self.needs.tick_decay(minutes_passed=1, current_activity=self.current_activity)
         self.emotions.update_from_needs(self.needs.to_dict())
@@ -99,9 +122,12 @@ class NPCAgent:
         # 2. Movement along path
         if self.path_queue:
             arrived = self.move_towards_target(speed=0.6)
-            if arrived and self.current_action and self.current_action.target_location:
-                self.current_location = self.current_action.target_location
-                self.current_activity = f"At {self.current_location}"
+            if arrived and self.current_action and self.current_action.action_type == ActionType.MOVE_TO:
+                if self.current_action.target_location:
+                    self.current_location = self.current_action.target_location
+                    self.current_activity = f"At {self.current_location}"
+                # Arrived at travel destination: clear remaining move delay to transition to next activity immediately
+                self.action_minutes_remaining = 0
 
         # 3. Decrement action duration
         if self.action_minutes_remaining > 0:
@@ -115,20 +141,31 @@ class NPCAgent:
                 current_sim_minute=sim_minute
             )
 
-        # 5. Check if next action decision is needed
-        # Decide if: no action, action finished, or critical need override
+        # 5. Check if scheduled plan step changed
+        current_step = self.planner.get_current_step(sim_hour, sim_minute % 60)
+        step_changed = False
+        if current_step:
+            step_key = f"{current_step.start_hour}:{current_step.start_minute}_{current_step.location}"
+            if self._last_plan_step_key != step_key:
+                if self._last_plan_step_key is not None:
+                    # New schedule block started!
+                    if current_step.location != self.current_location:
+                        step_changed = True
+                self._last_plan_step_key = step_key
+
+        # 6. Check if next action decision is needed
         urgent_hunger = self.needs.hunger < 15.0
         urgent_energy = self.needs.energy < 10.0
         
         need_decision = (
+            step_changed or
             self.action_minutes_remaining <= 0 or
             (urgent_hunger and "eat" not in self.current_activity.lower()) or
             (urgent_energy and "sleep" not in self.current_activity.lower() and "rest" not in self.current_activity.lower())
         )
 
-        if need_decision and (sim_minute - self.last_decision_minute >= 10 or self.last_decision_minute == -1):
+        if need_decision and (step_changed or sim_minute - self.last_decision_minute >= 5 or self.last_decision_minute == -1):
             self.last_decision_minute = sim_minute
-            current_step = self.planner.get_current_step(sim_hour, sim_minute % 60)
             recent_mems = [m.to_dict() for m in self.memory.retrieve(query="What should I do right now?", current_sim_minute=sim_minute, top_k=3)]
             
             action = await DecisionEngine.decide_action(
@@ -144,6 +181,15 @@ class NPCAgent:
 
             self.execute_action(action, sim_minute)
 
+        # 7. Ambient Micro-Wandering:
+        # If not moving along a path and not sleeping/resting, occasionally wander to an interior tile
+        # to ensure the town feels alive and dynamic instead of static
+        if not self.path_queue and "sleep" not in self.current_activity.lower() and "rest" not in self.current_activity.lower():
+            self.micro_wander_timer -= 1
+            if self.micro_wander_timer <= 0:
+                self.micro_wander_timer = random.randint(15, 30)
+                self._perform_ambient_micro_move()
+
     def execute_action(self, action: SimulationAction, sim_minute: int):
         self.current_action = action
         self.action_minutes_remaining = action.duration_minutes
@@ -155,12 +201,25 @@ class NPCAgent:
                 self.set_destination(loc.walk_x, loc.walk_y)
                 
         elif action.action_type == ActionType.EAT:
-            self.needs.satisfy("hunger", 40.0)
-            self.emotions.set_emotion(EmotionType.RELAXED, 0.6)
+            self.needs.satisfy("hunger", 45.0)
+            self.emotions.set_emotion(EmotionType.RELAXED, 0.7)
             
         elif action.action_type == ActionType.REST:
-            self.needs.satisfy("energy", 30.0)
-            self.emotions.set_emotion(EmotionType.RELAXED, 0.5)
+            self.needs.satisfy("energy", 35.0)
+            self.emotions.set_emotion(EmotionType.RELAXED, 0.6)
+
+        elif action.action_type == ActionType.CONVERSE:
+            self.needs.satisfy("social", 40.0)
+            self.emotions.set_emotion(EmotionType.HAPPY, 0.7)
+
+        elif action.action_type == ActionType.WORK:
+            self.wealth += 5.0
+            self.emotions.set_emotion(EmotionType.CURIOUS, 0.6)
+
+        elif action.action_type == ActionType.RELAX:
+            self.needs.satisfy("fun", 25.0)
+            self.needs.satisfy("energy", 10.0)
+            self.emotions.set_emotion(EmotionType.RELAXED, 0.6)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -189,6 +248,6 @@ class NPCAgent:
             "wealth": round(self.wealth, 1),
             "memory_count": len(self.memory.memories),
             "plan_summary": self.planner.plan_summary,
-            "current_plan_step": self.planner.get_current_step(7, 0).model_dump() if self.planner.schedule else None,
+            "current_plan_step": self.planner.get_current_step(getattr(self, "last_sim_hour", 7), getattr(self, "last_sim_minute", 0)).model_dump() if self.planner.schedule else None,
             "relationships": self.relationships.get_all()
         }
