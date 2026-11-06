@@ -103,11 +103,13 @@ export function App() {
                       : 'hover:bg-slate-800/60 border border-transparent'
                   }`}
                 >
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs text-white flex-shrink-0 shadow-sm"
-                    style={{ backgroundColor: npc.avatar_color }}
-                  >
-                    {npc.name[0]}
+                  <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 flex items-center justify-center shadow-sm">
+                    <img
+                      src={`/assets/characters/profile/${npc.sprite_name || 'Klaus_Mueller'}.png`}
+                      alt={npc.name}
+                      className="w-full h-full object-cover"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">

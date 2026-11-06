@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useSimulationStore } from '../store/simulationStore';
+import { ZoomIn, ZoomOut, MessageSquare } from 'lucide-react';
 
 export const WorldCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -7,10 +8,48 @@ export const WorldCanvas: React.FC = () => {
 
   const { state, mapMetadata, selectedNpcId, setSelectedNpcId, setSelectedLocationId } = useSimulationStore();
 
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 20, y: 20 });
-  const [zoom, setZoom] = useState<number>(18);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: -600, y: -200 });
+  const [zoom, setZoom] = useState<number>(0.55);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [showCallouts, setShowCallouts] = useState<boolean>(true);
+
+  // Cached map & sprite images
+  const mapBaseImgRef = useRef<HTMLImageElement | null>(null);
+  const mapForeImgRef = useRef<HTMLImageElement | null>(null);
+  const spriteCache = useRef<Map<string, HTMLImageElement>>(new Map());
+
+  // Previous NPC positions to determine movement direction
+  const prevPositions = useRef<Map<string, { x: number; y: number; dir: string }>>(new Map());
+
+  // Load Smallville Map and Character Sprite Sheets
+  useEffect(() => {
+    const baseImg = new Image();
+    baseImg.src = '/assets/the_ville/the_ville_base.png';
+    baseImg.onload = () => {
+      mapBaseImgRef.current = baseImg;
+    };
+
+    const foreImg = new Image();
+    foreImg.src = '/assets/the_ville/the_ville_foreground.png';
+    foreImg.onload = () => {
+      mapForeImgRef.current = foreImg;
+    };
+
+    // Preload character sprite sheets
+    if (state?.npcs) {
+      for (const npc of state.npcs) {
+        const spriteName = npc.sprite_name || 'Klaus_Mueller';
+        if (!spriteCache.current.has(spriteName)) {
+          const sImg = new Image();
+          sImg.src = `/assets/characters/${spriteName}.png`;
+          sImg.onload = () => {
+            spriteCache.current.set(spriteName, sImg);
+          };
+        }
+      }
+    }
+  }, [state?.npcs]);
 
   // Resize canvas to fill container
   const updateCanvasDimensions = useCallback(() => {
@@ -25,13 +64,11 @@ export const WorldCanvas: React.FC = () => {
     canvas.style.width = `${rect.width}px`;
     canvas.style.height = `${rect.height}px`;
 
-    // Center town on first load
-    if (rect.width > 0 && zoom === 18 && pan.x === 20 && pan.y === 20) {
-      const scale = Math.min(rect.width / 62, rect.height / 42);
-      setZoom(Math.max(14, Math.floor(scale)));
+    // Center town on initial load
+    if (rect.width > 0 && pan.x === -600 && pan.y === -200) {
       setPan({
-        x: (rect.width - 60 * scale) / 2,
-        y: (rect.height - 40 * scale) / 2,
+        x: rect.width / 2 - 2240 * zoom,
+        y: rect.height / 2 - 1600 * zoom,
       });
     }
   }, [zoom, pan.x, pan.y]);
@@ -42,265 +79,216 @@ export const WorldCanvas: React.FC = () => {
     return () => window.removeEventListener('resize', updateCanvasDimensions);
   }, [updateCanvasDimensions]);
 
-  // Main Render Loop
+  // Main Canvas Render Loop (Runs at 60 FPS for smooth sprite animation)
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    let animationFrameId: number;
 
-    const dpr = window.devicePixelRatio || 1;
-    ctx.save();
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    const render = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    // Apply pan and zoom
-    ctx.translate(pan.x, pan.y);
-    ctx.scale(zoom / 20, zoom / 20);
+      const dpr = window.devicePixelRatio || 1;
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
-    const unit = 20; // 1 coordinate unit = 20 pixels base
+      // Pixelated crisp rendering for 2D pixel art
+      ctx.imageSmoothingEnabled = false;
 
-    // 1. Draw Ground Grass Background
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, 60 * unit, 40 * unit);
+      // Apply Pan and Zoom
+      ctx.translate(pan.x, pan.y);
+      ctx.scale(zoom, zoom);
 
-    // 2. Draw Districts
-    if (mapMetadata?.districts) {
-      for (const dist of mapMetadata.districts) {
-        ctx.fillStyle = dist.color;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(
-          dist.bounds.x * unit,
-          dist.bounds.y * unit,
-          dist.bounds.w * unit,
-          dist.bounds.h * unit,
-          12
-        );
-        ctx.fill();
-        ctx.stroke();
-
-        // District Label
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
-        ctx.font = 'bold 11px system-ui';
-        ctx.fillText(dist.name.toUpperCase(), (dist.bounds.x + 0.5) * unit, (dist.bounds.y + 1.2) * unit);
+      // 1. Draw Smallville Pixel Art Base Map
+      if (mapBaseImgRef.current && mapBaseImgRef.current.complete) {
+        ctx.drawImage(mapBaseImgRef.current, 0, 0);
+      } else {
+        // Fallback placeholder while loading
+        ctx.fillStyle = '#7ac943'; // grass green
+        ctx.fillRect(0, 0, 4480, 3200);
       }
-    }
 
-    // 3. Draw Roads
-    if (mapMetadata?.roads) {
-      for (const road of mapMetadata.roads) {
-        ctx.strokeStyle = '#334155';
-        ctx.lineWidth = road.width * unit;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(road.x1 * unit, road.y1 * unit);
-        ctx.lineTo(road.x2 * unit, road.y2 * unit);
-        ctx.stroke();
+      // 2. Draw 25 Animated Pixel Art Character Sprites
+      if (state?.npcs) {
+        const animStep = Math.floor((Date.now() / 180) % 4);
 
-        // Dashed Centerline
-        ctx.strokeStyle = '#64748b';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath();
-        ctx.moveTo(road.x1 * unit, road.y1 * unit);
-        ctx.lineTo(road.x2 * unit, road.y2 * unit);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
+        for (const npc of state.npcs) {
+          // World coordinates: 1 unit = 32 pixels
+          const px = npc.x * 32;
+          const py = npc.y * 32;
 
-    // 4. Draw Buildings
-    if (mapMetadata?.locations) {
-      for (const loc of mapMetadata.locations) {
-        const bx = loc.x * unit;
-        const by = loc.y * unit;
-        const bw = loc.width * unit;
-        const bh = loc.height * unit;
+          // Compute movement direction
+          const prev = prevPositions.current.get(npc.id);
+          let direction = prev?.dir || 'down';
+          if (prev) {
+            const dx = npc.x - prev.x;
+            const dy = npc.y - prev.y;
+            if (Math.abs(dx) > Math.abs(dy)) {
+              if (dx > 0.01) direction = 'right';
+              else if (dx < -0.01) direction = 'left';
+            } else {
+              if (dy > 0.01) direction = 'down';
+              else if (dy < -0.01) direction = 'up';
+            }
+          }
+          prevPositions.current.set(npc.id, { x: npc.x, y: npc.y, dir: direction });
 
-        // Building Shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-        ctx.beginPath();
-        ctx.roundRect(bx + 3, by + 4, bw, bh, 8);
-        ctx.fill();
+          const isSelected = selectedNpcId === npc.id;
 
-        // Building Body
-        ctx.fillStyle = '#1e293b';
-        ctx.strokeStyle = loc.color || '#475569';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect(bx, by, bw, bh, 8);
-        ctx.fill();
-        ctx.stroke();
+          // Selection Glow
+          if (isSelected) {
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.beginPath();
+            ctx.arc(px + 16, py + 16, 24, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
 
-        // Roof / Accent Bar
-        ctx.fillStyle = loc.color || '#64748b';
-        ctx.beginPath();
-        ctx.roundRect(bx, by, bw, 6, [8, 8, 0, 0]);
-        ctx.fill();
+          // Draw Character Sprite
+          const spriteName = npc.sprite_name || 'Klaus_Mueller';
+          const spriteImg = spriteCache.current.get(spriteName);
 
-        // Building Name
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = 'bold 10px system-ui';
-        ctx.fillText(loc.name, bx + 6, by + 18, bw - 12);
+          if (spriteImg && spriteImg.complete) {
+            // Source coordinates from atlas
+            let srcY = 0; // down
+            if (direction === 'left') srcY = 32;
+            else if (direction === 'right') srcY = 64;
+            else if (direction === 'up') srcY = 96;
 
-        // Zone Tag
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '9px system-ui';
-        ctx.fillText(loc.zone.toUpperCase(), bx + 6, by + 30);
+            const isMoving = npc.is_moving;
+            const srcX = isMoving ? animStep * 32 : 32; // idle is frame 1 (x=32)
 
-        // Occupant Count Badge
-        const occupants = state?.npcs.filter((n) => n.current_location === loc.id) || [];
-        if (occupants.length > 0) {
-          ctx.fillStyle = '#3b82f6';
-          ctx.beginPath();
-          ctx.arc(bx + bw - 12, by + 16, 9, 0, Math.PI * 2);
-          ctx.fill();
+            // Draw 32x32 pixel art sprite scaled slightly for visibility
+            ctx.drawImage(
+              spriteImg,
+              srcX,
+              srcY,
+              32,
+              32,
+              px,
+              py,
+              32,
+              32
+            );
+          } else {
+            // Fallback avatar circle
+            ctx.fillStyle = npc.avatar_color || '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(px + 16, py + 16, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(npc.name[0], px + 16, py + 20);
+          }
+
+          // Initial & Speech Indicator Above Head (e.g., KM: 💬, AC: ☕, JL: 💬)
+          const initials = npc.name
+            .split(' ')
+            .map((w) => w[0])
+            .join('');
+
+          // Speech Bubble Tag (Exactly matching Stanford paper style)
           ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(px - 10, py - 20, 52, 16, 4);
+          ctx.fill();
+          ctx.stroke();
+
+          // Tail
+          ctx.beginPath();
+          ctx.moveTo(px + 12, py - 4);
+          ctx.lineTo(px + 16, py);
+          ctx.lineTo(px + 20, py - 4);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+
+          ctx.fillStyle = '#0f172a';
           ctx.font = 'bold 9px system-ui';
+          ctx.textAlign = 'left';
+          ctx.fillText(`${initials}:`, px - 6, py - 9);
+
+          // Icon in bubble
+          const isConversing = npc.current_activity.toLowerCase().includes('converse') || npc.current_activity.toLowerCase().includes('social');
+          const isEating = npc.current_activity.toLowerCase().includes('eat') || npc.current_activity.toLowerCase().includes('coffee');
+          const isResting = npc.current_activity.toLowerCase().includes('sleep') || npc.current_activity.toLowerCase().includes('rest');
+
+          let icon = '💬';
+          if (isEating) icon = '☕';
+          else if (isResting) icon = '💤';
+          else if (!isConversing) icon = '...';
+
+          ctx.font = '9px system-ui';
+          ctx.fillText(icon, px + 18, py - 9);
+
+          // Name label below sprite
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+          ctx.fillRect(px - 14, py + 34, 60, 14);
+          ctx.fillStyle = isSelected ? '#38bdf8' : '#f8fafc';
+          ctx.font = isSelected ? 'bold 10px system-ui' : '9px system-ui';
           ctx.textAlign = 'center';
-          ctx.fillText(occupants.length.toString(), bx + bw - 12, by + 19);
+          ctx.fillText(npc.name.split(' ')[0], px + 16, py + 44);
           ctx.textAlign = 'left';
         }
       }
-    }
 
-    // 5. Draw Active Conversations & Speech Bubbles
-    if (state?.recent_conversations) {
-      for (const conv of state.recent_conversations) {
-        if (!conv.is_completed && conv.messages.length > 0) {
-          const lastMsg = conv.messages[conv.messages.length - 1];
-          const speaker = state.npcs.find((n) => n.id === lastMsg.speaker_id);
-          if (speaker) {
-            const sx = speaker.x * unit;
-            const sy = (speaker.y - 1.8) * unit;
+      // 3. Draw Foreground Layer (Roofs and tree canopies for depth sorting)
+      if (mapForeImgRef.current && mapForeImgRef.current.complete) {
+        ctx.drawImage(mapForeImgRef.current, 0, 0);
+      }
 
-            // Speech bubble
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.strokeStyle = '#3b82f6';
-            ctx.lineWidth = 1.5;
+      // 4. Day / Night & Weather Atmospheric Lighting Overlay
+      if (state?.clock) {
+        const hour = state.clock.sim_hour;
+        let overlayColor = 'rgba(0, 0, 0, 0)';
+
+        if (hour >= 21 || hour < 5) {
+          overlayColor = 'rgba(15, 23, 42, 0.45)';
+        } else if (hour >= 5 && hour < 7) {
+          overlayColor = 'rgba(244, 114, 182, 0.12)';
+        } else if (hour >= 17 && hour < 21) {
+          overlayColor = 'rgba(251, 146, 60, 0.14)';
+        }
+
+        if (overlayColor !== 'rgba(0, 0, 0, 0)') {
+          ctx.fillStyle = overlayColor;
+          ctx.fillRect(0, 0, 4480, 3200);
+        }
+
+        // Gentle Rain Overlay
+        if (state.weather?.is_rain) {
+          ctx.strokeStyle = 'rgba(186, 230, 253, 0.35)';
+          ctx.lineWidth = 1.2;
+          for (let i = 0; i < 90; i++) {
+            const rx = (i * 97 + (state.clock.tick * 12) % 4480) % 4480;
+            const ry = (i * 113 + (state.clock.tick * 22) % 3200) % 3200;
             ctx.beginPath();
-            ctx.roundRect(sx - 70, sy - 26, 140, 24, 6);
-            ctx.fill();
+            ctx.moveTo(rx, ry);
+            ctx.lineTo(rx - 8, ry + 24);
             ctx.stroke();
-
-            // Speech tail
-            ctx.beginPath();
-            ctx.moveTo(sx - 4, sy - 2);
-            ctx.lineTo(sx, sy + 4);
-            ctx.lineTo(sx + 4, sy - 2);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.fill();
-
-            // Speech text
-            ctx.fillStyle = '#0f172a';
-            ctx.font = 'bold 9px system-ui';
-            const cleanText = lastMsg.message.length > 28 ? lastMsg.message.slice(0, 28) + '...' : lastMsg.message;
-            ctx.fillText(`💬 ${cleanText}`, sx - 64, sy - 11);
           }
         }
       }
-    }
 
-    // 6. Draw 25 NPCs
-    if (state?.npcs) {
-      for (const npc of state.npcs) {
-        const nx = npc.x * unit;
-        const ny = npc.y * unit;
-        const isSelected = selectedNpcId === npc.id;
+      ctx.restore();
+      animationFrameId = requestAnimationFrame(render);
+    };
 
-        // Selection Pulse Ring
-        if (isSelected) {
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(nx, ny, 16, 0, Math.PI * 2);
-          ctx.stroke();
+    animationFrameId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [pan, zoom, state, selectedNpcId]);
 
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
-          ctx.lineWidth = 6;
-          ctx.beginPath();
-          ctx.arc(nx, ny, 20, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-
-        // Avatar Shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.beginPath();
-        ctx.ellipse(nx, ny + 10, 10, 5, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // NPC Circle Avatar
-        ctx.fillStyle = npc.avatar_color || '#3b82f6';
-        ctx.beginPath();
-        ctx.arc(nx, ny, 10, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Initial inside avatar
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 9px system-ui';
-        ctx.textAlign = 'center';
-        ctx.fillText(npc.name[0], nx, ny + 3);
-
-        // Name Tag
-        ctx.font = isSelected ? 'bold 11px system-ui' : '10px system-ui';
-        ctx.fillStyle = isSelected ? '#38bdf8' : '#e2e8f0';
-        ctx.fillText(npc.name.split(' ')[0], nx, ny + 20);
-
-        // Activity Snippet Tag
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '8px system-ui';
-        const actLabel = npc.current_activity.length > 18 ? npc.current_activity.slice(0, 18) + '...' : npc.current_activity;
-        ctx.fillText(actLabel, nx, ny + 29);
-
-        ctx.textAlign = 'left';
-      }
-    }
-
-    // 7. Day / Night Atmospheric Lighting Overlay
-    if (state?.clock) {
-      const hour = state.clock.sim_hour;
-      let overlayColor = 'rgba(0, 0, 0, 0)';
-
-      if (hour >= 21 || hour < 5) {
-        // Deep Night
-        overlayColor = 'rgba(15, 23, 42, 0.45)';
-      } else if (hour >= 5 && hour < 7) {
-        // Dawn
-        overlayColor = 'rgba(244, 114, 182, 0.12)';
-      } else if (hour >= 17 && hour < 21) {
-        // Evening / Sunset
-        overlayColor = 'rgba(251, 146, 60, 0.15)';
-      }
-
-      if (overlayColor !== 'rgba(0, 0, 0, 0)') {
-        ctx.fillStyle = overlayColor;
-        ctx.fillRect(0, 0, 60 * unit, 40 * unit);
-      }
-
-      // Rain Weather Effect
-      if (state.weather?.is_rain) {
-        ctx.strokeStyle = 'rgba(147, 197, 253, 0.35)';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 40; i++) {
-          const rx = (i * 37 + (state.clock.tick * 8) % 1200) % (60 * unit);
-          const ry = (i * 53 + (state.clock.tick * 15) % 800) % (40 * unit);
-          ctx.beginPath();
-          ctx.moveTo(rx, ry);
-          ctx.lineTo(rx - 4, ry + 12);
-          ctx.stroke();
-        }
-      }
-    }
-
-    ctx.restore();
-  }, [state, mapMetadata, pan, zoom, selectedNpcId]);
-
-  // Click handler to select NPC or Building
+  // Click on canvas to select NPC or Location
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -308,18 +296,19 @@ export const WorldCanvas: React.FC = () => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Convert screen coord to world unit
-    const scale = zoom / 20;
-    const worldX = (mouseX - pan.x) / (20 * scale);
-    const worldY = (mouseY - pan.y) / (20 * scale);
+    // Convert screen coordinates to world pixel coords
+    const worldPx = (mouseX - pan.x) / zoom;
+    const worldPy = (mouseY - pan.y) / zoom;
+    const worldTileX = worldPx / 32;
+    const worldTileY = worldPy / 32;
 
-    // 1. Check if clicked an NPC
+    // Check if clicked an NPC (within 24px)
     if (state?.npcs) {
       for (const npc of state.npcs) {
-        const dx = npc.x - worldX;
-        const dy = npc.y - worldY;
+        const dx = npc.x * 32 + 16 - worldPx;
+        const dy = npc.y * 32 + 16 - worldPy;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist <= 1.2) {
+        if (dist <= 28) {
           setSelectedNpcId(npc.id);
           setSelectedLocationId(null);
           return;
@@ -327,14 +316,14 @@ export const WorldCanvas: React.FC = () => {
       }
     }
 
-    // 2. Check if clicked a Building
+    // Check if clicked a building/room
     if (mapMetadata?.locations) {
       for (const loc of mapMetadata.locations) {
         if (
-          worldX >= loc.x &&
-          worldX <= loc.x + loc.width &&
-          worldY >= loc.y &&
-          worldY <= loc.y + loc.height
+          worldTileX >= loc.x &&
+          worldTileX <= loc.x + loc.width &&
+          worldTileY >= loc.y &&
+          worldTileY <= loc.y + loc.height
         ) {
           setSelectedLocationId(loc.id);
           return;
@@ -342,12 +331,11 @@ export const WorldCanvas: React.FC = () => {
       }
     }
 
-    // Clicked empty ground
     setSelectedNpcId(null);
     setSelectedLocationId(null);
   };
 
-  // Pan controls
+  // Drag & Pan handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -366,8 +354,21 @@ export const WorldCanvas: React.FC = () => {
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    setZoom((prev) => Math.max(10, Math.min(prev * zoomFactor, 45)));
+    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+    setZoom((prev) => Math.max(0.2, Math.min(prev * zoomFactor, 2.2)));
+  };
+
+  // Zoom directly to specific Smallville landmark
+  const zoomToSector = (tileX: number, tileY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const targetZoom = 1.0;
+    const rect = canvas.getBoundingClientRect();
+    setZoom(targetZoom);
+    setPan({
+      x: rect.width / 2 - tileX * 32 * targetZoom,
+      y: rect.height / 2 - tileY * 32 * targetZoom,
+    });
   };
 
   return (
@@ -386,47 +387,124 @@ export const WorldCanvas: React.FC = () => {
       />
 
       {/* Floating Canvas Controls */}
-      <div className="absolute bottom-4 left-4 flex items-center space-x-2 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/60 shadow-lg text-xs text-slate-300">
+      <div className="absolute bottom-4 left-4 flex items-center space-x-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/60 shadow-xl text-xs text-slate-300 z-10">
         <button
-          onClick={() => setZoom((z) => Math.min(z + 3, 45))}
-          className="hover:text-white px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold"
+          onClick={() => setZoom((z) => Math.min(z * 1.25, 2.2))}
+          className="hover:text-white p-1 rounded-lg bg-slate-800 border border-slate-700"
+          title="Zoom In"
         >
-          +
+          <ZoomIn className="w-4 h-4" />
         </button>
         <button
-          onClick={() => setZoom((z) => Math.max(z - 3, 10))}
-          className="hover:text-white px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold"
+          onClick={() => setZoom((z) => Math.max(z * 0.8, 0.2))}
+          className="hover:text-white p-1 rounded-lg bg-slate-800 border border-slate-700"
+          title="Zoom Out"
         >
-          -
+          <ZoomOut className="w-4 h-4" />
         </button>
-        <span className="text-slate-400">Zoom: {Math.round((zoom / 20) * 100)}%</span>
+        <span className="text-slate-400 font-mono">Zoom: {Math.round(zoom * 100)}%</span>
         <span className="text-slate-600">|</span>
         <button
-          onClick={() => {
-            setZoom(18);
-            updateCanvasDimensions();
-          }}
+          onClick={() => setShowCallouts((s) => !s)}
+          className={`flex items-center space-x-1 px-2 py-0.5 rounded text-xs transition ${
+            showCallouts ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-400'
+          }`}
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          <span>Callout Boxes</span>
+        </button>
+        <span className="text-slate-600">|</span>
+        <button
+          onClick={() => zoomToSector(75, 45)}
           className="hover:text-white text-slate-400 underline"
         >
           Reset View
         </button>
       </div>
 
-      {/* Legend & Town Stats */}
-      <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-700/60 shadow-lg text-xs text-slate-300 flex items-center space-x-4">
-        <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-          <span>25 Inhabitants Active</span>
-        </div>
-        <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-          <span>12 Residential Mansions & Flats</span>
-        </div>
-        <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-          <span>8 Public Squares & Shops</span>
-        </div>
+      {/* Quick Landmark Bookmarks */}
+      <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/60 shadow-xl text-xs text-slate-300 flex items-center space-x-2 z-10">
+        <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">Smallville Sectors:</span>
+        <button
+          onClick={() => zoomToSector(77, 21)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+        >
+          ☕ Hobbs Cafe
+        </button>
+        <button
+          onClick={() => zoomToSector(84, 47)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+        >
+          🏪 Willows Market
+        </button>
+        <button
+          onClick={() => zoomToSector(27, 46)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+        >
+          🌳 Johnson Park
+        </button>
+        <button
+          onClick={() => zoomToSector(57, 22)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+        >
+          🍺 Rose & Crown Pub
+        </button>
+        <button
+          onClick={() => zoomToSector(116, 26)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+        >
+          🎓 Oak Hill College
+        </button>
       </div>
+
+      {/* Stanford Generative Agents Magnified Callout Boxes (Matching Paper Visualization!) */}
+      {showCallouts && (
+        <>
+          {/* Callout 1: Hobbs Cafe Conversation */}
+          <div
+            className="absolute top-16 left-80 w-80 bg-slate-900/95 backdrop-blur-md border-2 border-sky-500/70 rounded-2xl shadow-2xl p-3 z-10 text-slate-100 transition-all hover:scale-105 cursor-pointer"
+            onClick={() => zoomToSector(77, 21)}
+          >
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 mb-2">
+              <span className="font-bold text-xs text-sky-400 flex items-center space-x-1">
+                <span>☕</span>
+                <span>Joining for coffee at a cafe</span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">Hobbs Cafe</span>
+            </div>
+            <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80 font-mono text-[11px] space-y-1 text-slate-300">
+              <p className="text-pink-300">
+                <span className="font-bold text-white">[Clara]:</span> "Hey Marcus, mind if I join you for warm espresso?"
+              </p>
+              <p className="text-sky-300">
+                <span className="font-bold text-white">[Marcus]:</span> "Not at all, Clara. How is your morning baking going?"
+              </p>
+            </div>
+          </div>
+
+          {/* Callout 2: Willows Market Gossip */}
+          <div
+            className="absolute bottom-16 right-96 w-84 bg-slate-900/95 backdrop-blur-md border-2 border-amber-500/70 rounded-2xl shadow-2xl p-3 z-10 text-slate-100 transition-all hover:scale-105 cursor-pointer"
+            onClick={() => zoomToSector(84, 47)}
+          >
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 mb-2">
+              <span className="font-bold text-xs text-amber-400 flex items-center space-x-1">
+                <span>💬</span>
+                <span>Sharing news with townsfolk</span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">The Willows Market</span>
+            </div>
+            <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80 font-mono text-[11px] space-y-1 text-slate-300">
+              <p className="text-amber-300">
+                <span className="font-bold text-white">[Samuel]:</span> "Have you heard anything new about the Autumn festival plans?"
+              </p>
+              <p className="text-emerald-300">
+                <span className="font-bold text-white">[Sophie]:</span> "Yes! Arthur Vance is drafting the civic notice today."
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

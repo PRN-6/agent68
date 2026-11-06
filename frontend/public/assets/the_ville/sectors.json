@@ -1,0 +1,154 @@
+{
+  "Giorgio Rossi's apartment": {
+    "x": 85,
+    "y": 12,
+    "width": 7,
+    "height": 14,
+    "center_x": 88.0,
+    "center_y": 18.5
+  },
+  "Carlos Gomez's apartment": {
+    "x": 92,
+    "y": 12,
+    "width": 7,
+    "height": 14,
+    "center_x": 95.0,
+    "center_y": 18.5
+  },
+  "Arthur Burton's apartment": {
+    "x": 52,
+    "y": 13,
+    "width": 12,
+    "height": 7,
+    "center_x": 57.5,
+    "center_y": 16.0
+  },
+  "Ryan Park's apartment": {
+    "x": 64,
+    "y": 13,
+    "width": 7,
+    "height": 14,
+    "center_x": 67.0,
+    "center_y": 19.5
+  },
+  "Isabella Rodriguez's apartment": {
+    "x": 71,
+    "y": 13,
+    "width": 14,
+    "height": 6,
+    "center_x": 77.5,
+    "center_y": 15.5
+  },
+  "artist's co-living space": {
+    "x": 14,
+    "y": 17,
+    "width": 30,
+    "height": 19,
+    "center_x": 28.5,
+    "center_y": 26.0
+  },
+  "Hobbs Cafe": {
+    "x": 71,
+    "y": 17,
+    "width": 14,
+    "height": 10,
+    "center_x": 77.5,
+    "center_y": 21.5
+  },
+  "The Rose and Crown Pub": {
+    "x": 52,
+    "y": 18,
+    "width": 12,
+    "height": 9,
+    "center_x": 57.5,
+    "center_y": 22.0
+  },
+  "Oak Hill College": {
+    "x": 107,
+    "y": 19,
+    "width": 19,
+    "height": 16,
+    "center_x": 116.0,
+    "center_y": 26.5
+  },
+  "Dorm for Oak Hill College": {
+    "x": 105,
+    "y": 31,
+    "width": 29,
+    "height": 32,
+    "center_x": 119.0,
+    "center_y": 46.5
+  },
+  "Johnson Park": {
+    "x": 20,
+    "y": 41,
+    "width": 16,
+    "height": 11,
+    "center_x": 27.5,
+    "center_y": 46.0
+  },
+  "Harvey Oak Supply Store": {
+    "x": 56,
+    "y": 42,
+    "width": 16,
+    "height": 12,
+    "center_x": 63.5,
+    "center_y": 47.5
+  },
+  "The Willows Market and Pharmacy": {
+    "x": 74,
+    "y": 42,
+    "width": 21,
+    "height": 12,
+    "center_x": 84.0,
+    "center_y": 47.5
+  },
+  "Adam Smith's house": {
+    "x": 19,
+    "y": 58,
+    "width": 7,
+    "height": 13,
+    "center_x": 22.0,
+    "center_y": 64.0
+  },
+  "Yuriko Yamamoto's house": {
+    "x": 27,
+    "y": 58,
+    "width": 7,
+    "height": 13,
+    "center_x": 30.0,
+    "center_y": 64.0
+  },
+  "Moore family's house": {
+    "x": 35,
+    "y": 58,
+    "width": 7,
+    "height": 13,
+    "center_x": 38.0,
+    "center_y": 64.0
+  },
+  "Tamara Taylor and Carmen Ortiz's house": {
+    "x": 50,
+    "y": 64,
+    "width": 14,
+    "height": 19,
+    "center_x": 56.5,
+    "center_y": 73.0
+  },
+  "Moreno family's house": {
+    "x": 68,
+    "y": 64,
+    "width": 14,
+    "height": 19,
+    "center_x": 74.5,
+    "center_y": 73.0
+  },
+  "Lin family's house": {
+    "x": 86,
+    "y": 64,
+    "width": 14,
+    "height": 19,
+    "center_x": 92.5,
+    "center_y": 73.0
+  }
+}

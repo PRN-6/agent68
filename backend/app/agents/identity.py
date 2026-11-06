@@ -25,6 +25,7 @@ class NPCIdentity(BaseModel):
     home_id: str
     workplace_id: str
     avatar_color: str = "#3B82F6"
+    sprite_name: str = "Klaus_Mueller"  # Matches Stanford sprite sheets in assets/characters/
 
     def to_dict(self) -> Dict[str, Any]:
         return self.model_dump()

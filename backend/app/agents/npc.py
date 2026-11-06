@@ -51,6 +51,7 @@ class NPCAgent:
             "home_id": self.identity.home_id,
             "workplace_id": self.identity.workplace_id,
             "avatar_color": self.identity.avatar_color,
+            "sprite_name": getattr(self.identity, "sprite_name", "Klaus_Mueller"),
             "current_location": self.current_location,
             "wealth": self.wealth
         }
@@ -176,6 +177,7 @@ class NPCAgent:
             "home_id": self.identity.home_id,
             "workplace_id": self.identity.workplace_id,
             "avatar_color": self.identity.avatar_color,
+            "sprite_name": getattr(self.identity, "sprite_name", "Klaus_Mueller"),
             "x": round(self.x, 2),
             "y": round(self.y, 2),
             "current_location": self.current_location,

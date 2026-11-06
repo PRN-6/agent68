@@ -20,11 +20,13 @@ export const NPCProfileDrawer: React.FC = () => {
       {/* Header */}
       <div className="p-4 border-b border-slate-800 flex items-start justify-between bg-slate-950/60">
         <div className="flex items-center space-x-3">
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg text-white shadow-md border-2 border-slate-600"
-            style={{ backgroundColor: npc.avatar_color }}
-          >
-            {npc.name[0]}
+          <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-slate-800 border-2 border-slate-600 shadow-md flex-shrink-0 flex items-center justify-center">
+            <img
+              src={`/assets/characters/profile/${npc.sprite_name || 'Klaus_Mueller'}.png`}
+              alt={npc.name}
+              className="w-full h-full object-cover"
+              style={{ imageRendering: 'pixelated' }}
+            />
           </div>
           <div>
             <h2 className="text-base font-bold text-white flex items-center space-x-2">

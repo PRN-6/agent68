@@ -69,6 +69,7 @@ export interface NPC {
   home_id: string;
   workplace_id: string;
   avatar_color: string;
+  sprite_name?: string;
   x: number;
   y: number;
   current_location: string;
