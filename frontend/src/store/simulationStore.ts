@@ -43,7 +43,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   selectedNpcId: null,
   selectedLocationId: null,
   activeTab: 'world',
-  mapTheme: 'the_ville',
+  mapTheme: 'kenney_urban',
   isMemoryModalOpen: false,
   isGodModeOpen: false,
   isTilesetModalOpen: false,

@@ -36,29 +36,39 @@ export const WorldCanvas: React.FC = () => {
   // Previous NPC positions to determine movement direction
   const prevPositions = useRef<Map<string, { x: number; y: number; dir: string }>>(new Map());
 
-  // Load Smallville & Kenney Urban Maps on Mount (cached in memory)
+  // Load Kenney Urban Maps on Mount (with cache-busting to ensure immediate display)
   useEffect(() => {
-    // 1. Stanford The Ville Maps
-    const vBase = new Image();
-    vBase.src = '/assets/the_ville/the_ville_base.png';
-    vBase.onload = () => { themeImages.current.the_ville.base = vBase; };
-    if (vBase.complete) themeImages.current.the_ville.base = vBase;
-
-    const vFore = new Image();
-    vFore.src = '/assets/the_ville/the_ville_foreground.png';
-    vFore.onload = () => { themeImages.current.the_ville.fore = vFore; };
-    if (vFore.complete) themeImages.current.the_ville.fore = vFore;
-
-    // 2. Kenney RPG Urban Pack Maps
+    // 1. Primary Kenney Urban Map (asphalt roads, crosswalks, brick buildings, cars, park)
     const uBase = new Image();
-    uBase.src = '/assets/the_ville/kenney_urban_base.png';
-    uBase.onload = () => { themeImages.current.kenney_urban.base = uBase; };
-    if (uBase.complete) themeImages.current.kenney_urban.base = uBase;
+    uBase.src = '/assets/the_ville/the_ville_base.png?v=kenney_urban_v2';
+    uBase.onload = () => {
+      themeImages.current.kenney_urban.base = uBase;
+      themeImages.current.the_ville.base = uBase;
+    };
+    if (uBase.complete) {
+      themeImages.current.kenney_urban.base = uBase;
+      themeImages.current.the_ville.base = uBase;
+    }
 
     const uFore = new Image();
-    uFore.src = '/assets/the_ville/kenney_urban_foreground.png';
-    uFore.onload = () => { themeImages.current.kenney_urban.fore = uFore; };
-    if (uFore.complete) themeImages.current.kenney_urban.fore = uFore;
+    uFore.src = '/assets/the_ville/the_ville_foreground.png?v=kenney_urban_v2';
+    uFore.onload = () => {
+      themeImages.current.kenney_urban.fore = uFore;
+      themeImages.current.the_ville.fore = uFore;
+    };
+    if (uFore.complete) {
+      themeImages.current.kenney_urban.fore = uFore;
+      themeImages.current.the_ville.fore = uFore;
+    }
+
+    // 2. Stanford The Ville backup (if user wants to view the legacy Stanford map)
+    const vBase = new Image();
+    vBase.src = '/assets/the_ville/stanford_ville_base.png';
+    vBase.onload = () => { themeImages.current.the_ville.base = vBase; };
+
+    const vFore = new Image();
+    vFore.src = '/assets/the_ville/stanford_ville_foreground.png';
+    vFore.onload = () => { themeImages.current.the_ville.fore = vFore; };
   }, []);
 
   // Preload character sprite sheets as NPCs appear (both Stanford & Kenney Urban sets)
@@ -471,7 +481,7 @@ export const WorldCanvas: React.FC = () => {
 
       {/* Quick Landmark Bookmarks */}
       <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/60 shadow-xl text-xs text-slate-300 flex items-center space-x-2 z-10">
-        <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">Smallville Sectors:</span>
+        <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">Kenney Urban Town:</span>
         <button
           onClick={() => zoomToSector(77, 21)}
           className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
