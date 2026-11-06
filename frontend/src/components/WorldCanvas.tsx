@@ -61,8 +61,20 @@ export const WorldCanvas: React.FC = () => {
     if (uFore.complete) themeImages.current.kenney_urban.fore = uFore;
   }, []);
 
-  // Preload character sprite sheets as NPCs appear
+  // Preload character sprite sheets as NPCs appear (both Stanford & Kenney Urban sets)
   useEffect(() => {
+    // 1. Preload 5 Kenney Urban Character Sprite Sheets from extracted zip
+    for (let i = 1; i <= 5; i++) {
+      const kKey = `kenney_char_${i}`;
+      if (!spriteCache.current.has(kKey)) {
+        const kImg = new Image();
+        kImg.src = `/assets/characters/kenney/${kKey}.png`;
+        kImg.onload = () => { spriteCache.current.set(kKey, kImg); };
+        if (kImg.complete) spriteCache.current.set(kKey, kImg);
+      }
+    }
+
+    // 2. Preload Stanford character sheets
     if (state?.npcs) {
       for (const npc of state.npcs) {
         const spriteName = npc.sprite_name || 'Klaus_Mueller';
@@ -178,9 +190,13 @@ export const WorldCanvas: React.FC = () => {
             ctx.stroke();
           }
 
-          // Draw Character Sprite
-          const spriteName = npc.sprite_name || 'Klaus_Mueller';
-          const spriteImg = spriteCache.current.get(spriteName);
+          // Draw Character Sprite (select Kenney character when urban theme is active)
+          let spriteKey = npc.sprite_name || 'Klaus_Mueller';
+          if (mapTheme === 'kenney_urban') {
+            const charNum = ((npc.id.charCodeAt(npc.id.length - 1) || 0) % 5) + 1;
+            spriteKey = `kenney_char_${charNum}`;
+          }
+          const spriteImg = spriteCache.current.get(spriteKey);
 
           if (spriteImg && spriteImg.complete) {
             // Source coordinates from atlas

@@ -3,7 +3,7 @@ import { useSimulationStore } from '../store/simulationStore';
 import { X, Brain, Heart, Compass, Clock, Activity, Target, Users } from 'lucide-react';
 
 export const NPCProfileDrawer: React.FC = () => {
-  const { state, selectedNpcId, setSelectedNpcId, setIsMemoryModalOpen, fetchNpcMemories } = useSimulationStore();
+  const { state, selectedNpcId, setSelectedNpcId, setIsMemoryModalOpen, fetchNpcMemories, mapTheme } = useSimulationStore();
 
   if (!selectedNpcId || !state) return null;
 
@@ -15,6 +15,11 @@ export const NPCProfileDrawer: React.FC = () => {
     setIsMemoryModalOpen(true);
   };
 
+  const portraitSrc =
+    mapTheme === 'kenney_urban'
+      ? `/assets/characters/profile/kenney/kenney_char_${((npc.id.charCodeAt(npc.id.length - 1) || 0) % 5) + 1}.png`
+      : `/assets/characters/profile/${npc.sprite_name || 'Klaus_Mueller'}.png`;
+
   return (
     <div className="absolute right-0 top-0 bottom-0 w-96 bg-slate-900/95 backdrop-blur-xl border-l border-slate-700/70 shadow-2xl z-20 flex flex-col overflow-hidden text-slate-100 transition-all duration-300">
       {/* Header */}
@@ -22,7 +27,7 @@ export const NPCProfileDrawer: React.FC = () => {
         <div className="flex items-center space-x-3">
           <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-slate-800 border-2 border-slate-600 shadow-md flex-shrink-0 flex items-center justify-center">
             <img
-              src={`/assets/characters/profile/${npc.sprite_name || 'Klaus_Mueller'}.png`}
+              src={portraitSrc}
               alt={npc.name}
               className="w-full h-full object-cover"
               style={{ imageRendering: 'pixelated' }}

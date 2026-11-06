@@ -19,6 +19,7 @@ export function App() {
     setIsConnected,
     selectedNpcId,
     setSelectedNpcId,
+    mapTheme,
   } = useSimulationStore();
 
   // Initial Data Fetch & WebSocket Connection
@@ -106,7 +107,11 @@ export function App() {
                 >
                   <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0 flex items-center justify-center shadow-sm">
                     <img
-                      src={`/assets/characters/profile/${npc.sprite_name || 'Klaus_Mueller'}.png`}
+                      src={
+                        mapTheme === 'kenney_urban'
+                          ? `/assets/characters/profile/kenney/kenney_char_${((npc.id.charCodeAt(npc.id.length - 1) || 0) % 5) + 1}.png`
+                          : `/assets/characters/profile/${npc.sprite_name || 'Klaus_Mueller'}.png`
+                      }
                       alt={npc.name}
                       className="w-full h-full object-cover"
                       style={{ imageRendering: 'pixelated' }}
