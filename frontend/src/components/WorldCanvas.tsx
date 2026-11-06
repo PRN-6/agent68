@@ -22,21 +22,29 @@ export const WorldCanvas: React.FC = () => {
   // Previous NPC positions to determine movement direction
   const prevPositions = useRef<Map<string, { x: number; y: number; dir: string }>>(new Map());
 
-  // Load Smallville Map and Character Sprite Sheets
+  // Load Smallville Map on Mount (loaded once, kept in memory)
   useEffect(() => {
     const baseImg = new Image();
     baseImg.src = '/assets/the_ville/the_ville_base.png';
     baseImg.onload = () => {
       mapBaseImgRef.current = baseImg;
     };
+    if (baseImg.complete) {
+      mapBaseImgRef.current = baseImg;
+    }
 
     const foreImg = new Image();
     foreImg.src = '/assets/the_ville/the_ville_foreground.png';
     foreImg.onload = () => {
       mapForeImgRef.current = foreImg;
     };
+    if (foreImg.complete) {
+      mapForeImgRef.current = foreImg;
+    }
+  }, []);
 
-    // Preload character sprite sheets
+  // Preload character sprite sheets as NPCs appear
+  useEffect(() => {
     if (state?.npcs) {
       for (const npc of state.npcs) {
         const spriteName = npc.sprite_name || 'Klaus_Mueller';
@@ -46,6 +54,9 @@ export const WorldCanvas: React.FC = () => {
           sImg.onload = () => {
             spriteCache.current.set(spriteName, sImg);
           };
+          if (sImg.complete) {
+            spriteCache.current.set(spriteName, sImg);
+          }
         }
       }
     }
