@@ -15,6 +15,7 @@ import {
   Share2,
   Clock,
   Sparkles,
+  Swords,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -127,7 +128,19 @@ export const Header: React.FC = () => {
           }`}
         >
           <Map className="w-3.5 h-3.5" />
-          <span>Town Map</span>
+          <span>Realm Map</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('parties')}
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-semibold transition ${
+            activeTab === 'parties'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <Swords className="w-3.5 h-3.5 text-amber-400" />
+          <span>Dungeon Parties</span>
         </button>
 
         <button

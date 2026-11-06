@@ -181,6 +181,21 @@ async def get_social_graph():
 async def get_events(limit: int = Query(50, ge=1, le=200)):
     return event_bus.get_recent_history(limit=limit)
 
+@app.get("/api/parties")
+async def get_parties():
+    from app.agents.party import party_manager
+    return [p.to_dict() for p in party_manager.get_all_parties()]
+
+@app.post("/api/parties/{party_id}/expedition")
+async def trigger_party_expedition(party_id: str):
+    from app.agents.party import party_manager, PartyStatus
+    party = party_manager.get_party(party_id)
+    if not party:
+        raise HTTPException(status_code=404, detail="Party not found")
+    party.status = PartyStatus.MARCHING_TO_DUNGEON
+    party.state_timer = 1
+    return {"status": "expedition_launched", "party": party.to_dict()}
+
 # Simulation Controls
 @app.post("/api/simulation/pause")
 async def pause_simulation():

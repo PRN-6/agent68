@@ -11,6 +11,7 @@ from app.core.events import event_bus
 from app.agents.population import initialize_population
 from app.agents.npc import NPCAgent
 from app.agents.conversation import ConversationSession
+from app.agents.party import party_manager
 from app.world.locations import TOWN_LOCATIONS, get_all_locations
 from app.db.database import AsyncSessionLocal
 from app.db.models import NPCModel, MemoryModel, RelationshipModel, SimulationStateModel
@@ -135,6 +136,9 @@ class SimulationEngine:
                             self.stats["total_conversations"] += 1
                             if len(self.active_conversations) > 20:
                                 self.active_conversations.pop(0)
+
+        # 5. MMORPG Adventuring Parties & Dungeon Expeditions Tick
+        await party_manager.update_tick(self.npcs, sim_minute)
 
         t_end = datetime.utcnow()
         self.stats["sim_tick_duration_ms"] = round((t_end - t_start).total_seconds() * 1000.0, 2)
@@ -331,6 +335,7 @@ class SimulationEngine:
             "clock": self.clock.get_state(),
             "weather": self.weather.get_state(),
             "npcs": [agent.to_dict() for agent in self.npcs.values()],
+            "parties": [p.to_dict() for p in party_manager.get_all_parties()],
             "recent_events": event_bus.get_recent_history(limit=25),
             "recent_conversations": [c.to_dict() for c in self.active_conversations[-5:]],
             "stats": self.stats

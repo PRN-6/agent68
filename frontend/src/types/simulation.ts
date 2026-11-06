@@ -87,6 +87,19 @@ export interface NPC {
     summary: string;
     schedule: ScheduleStep[];
   };
+  // MMORPG System Extensions
+  rpg_class?: string;
+  role?: string;
+  level?: number;
+  hp?: number;
+  max_hp?: number;
+  mana?: number;
+  max_mana?: number;
+  equipment?: Record<string, string>;
+  party_id?: string | null;
+  title?: string;
+  dungeon_clears?: number;
+  monsters_slain?: number;
 }
 
 export interface LocationItem {
@@ -177,10 +190,30 @@ export interface ActiveConversation {
   is_completed: boolean;
 }
 
+export interface Party {
+  party_id: string;
+  name: string;
+  leader_id: string;
+  member_ids: string[];
+  banner_color: string;
+  status: string;
+  current_dungeon_room?: string | null;
+  dungeon_clears: number;
+  total_loot_gold: number;
+  latest_log: string;
+  current_monster?: {
+    name: string;
+    hp: number;
+    max_hp: number;
+    status: string;
+  } | null;
+}
+
 export interface SimulationState {
   clock: ClockState;
   weather: WeatherState;
   npcs: NPC[];
+  parties?: Party[];
   recent_events: WorldEventItem[];
   recent_conversations: ActiveConversation[];
   stats: {

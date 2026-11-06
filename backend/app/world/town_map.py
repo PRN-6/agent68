@@ -3,23 +3,17 @@ from app.world.locations import TOWN_LOCATIONS, get_all_locations
 
 class TownMap:
     def __init__(self):
-        self.width: int = 60
-        self.height: int = 40
+        self.width: int = 140
+        self.height: int = 100
         self.locations = TOWN_LOCATIONS
         
-        # Major roads segments for frontend drawing
         self.roads: List[Dict[str, Any]] = [
-            # Horizontal main avenues
-            {"x1": 4, "y1": 8, "x2": 56, "y2": 8, "width": 2},
-            {"x1": 4, "y1": 14, "x2": 56, "y2": 14, "width": 2},
-            {"x1": 4, "y1": 20, "x2": 56, "y2": 20, "width": 3},  # Central Market Blvd
-            {"x1": 4, "y1": 26, "x2": 56, "y2": 26, "width": 2},
-            
-            # Vertical avenues
-            {"x1": 16, "y1": 4, "x2": 16, "y2": 36, "width": 2},  # West Lane
-            {"x1": 30, "y1": 4, "x2": 30, "y2": 36, "width": 3},  # High Street
-            {"x1": 40, "y1": 4, "x2": 40, "y2": 36, "width": 2},  # Civic Way
-            {"x1": 50, "y1": 4, "x2": 50, "y2": 36, "width": 2},  # East Walk
+            # Main East-West High Street to Bridge & Dungeon
+            {"x1": 10, "y1": 49, "x2": 115, "y2": 49, "width": 3},
+            # North-South Avenue connecting Guild & Tavern to Plaza & Cottages
+            {"x1": 43, "y1": 20, "x2": 43, "y2": 85, "width": 3},
+            # West Avenue connecting Tavern, Blacksmith, and Arena
+            {"x1": 20, "y1": 22, "x2": 20, "y2": 75, "width": 2},
         ]
 
     def get_map_metadata(self) -> Dict[str, Any]:
@@ -29,13 +23,12 @@ class TownMap:
             "roads": self.roads,
             "locations": [loc.model_dump() for loc in get_all_locations()],
             "districts": [
-                {"name": "Residential Quarter", "bounds": {"x": 2, "y": 2, "w": 24, "h": 25}, "color": "rgba(99, 102, 241, 0.08)"},
-                {"name": "Civic & Medical Center", "bounds": {"x": 38, "y": 2, "w": 20, "h": 14}, "color": "rgba(59, 130, 246, 0.08)"},
-                {"name": "Central Plaza & Market", "bounds": {"x": 22, "y": 16, "w": 34, "h": 10}, "color": "rgba(245, 158, 11, 0.08)"},
-                {"name": "Dining & Hospitality", "bounds": {"x": 4, "y": 28, "w": 26, "h": 10}, "color": "rgba(236, 72, 153, 0.08)"},
-                {"name": "Parklands & Orchards", "bounds": {"x": 32, "y": 26, "w": 26, "h": 12}, "color": "rgba(34, 197, 94, 0.08)"},
+                {"name": "Adventurer's Guild & Tavern", "bounds": {"x": 8, "y": 8, "w": 50, "h": 24}, "color": "rgba(99, 102, 241, 0.12)"},
+                {"name": "Sunhaven Plaza & Arcane Sanctum", "bounds": {"x": 8, "y": 34, "w": 68, "h": 26}, "color": "rgba(245, 158, 11, 0.12)"},
+                {"name": "Hero Arena & Cottages", "bounds": {"x": 8, "y": 62, "w": 68, "h": 32}, "color": "rgba(34, 197, 94, 0.12)"},
+                {"name": "The River & Whispering Forest", "bounds": {"x": 78, "y": 4, "w": 32, "h": 92}, "color": "rgba(56, 189, 248, 0.12)"},
+                {"name": "The Shadow Crypts / Dungeon", "bounds": {"x": 112, "y": 4, "w": 26, "h": 92}, "color": "rgba(168, 85, 247, 0.15)"},
             ]
         }
 
 town_map = TownMap()
-

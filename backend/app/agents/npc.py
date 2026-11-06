@@ -33,12 +33,26 @@ class NPCAgent:
         self.current_activity: str = "Waking up"
         self.action_minutes_remaining: int = 0
         self.path_queue: List[Tuple[float, float]] = []
-        self.wealth: float = 120.0
+        self.wealth: float = float(getattr(identity, "gold", 120.0))
         self.last_decision_minute: int = -1
         self.micro_wander_timer: int = random.randint(10, 25)
         self.last_sim_hour: int = 7
         self.last_sim_minute: int = 0
         self._last_plan_step_key: Optional[str] = None
+
+        # MMORPG Character Attributes
+        self.rpg_class: str = getattr(identity, "rpg_class", "Warrior")
+        self.role: str = getattr(identity, "role", "Melee DPS")
+        self.level: int = getattr(identity, "level", 1)
+        self.hp: int = getattr(identity, "hp", 100)
+        self.max_hp: int = getattr(identity, "max_hp", 100)
+        self.mana: int = getattr(identity, "mana", 50)
+        self.max_mana: int = getattr(identity, "max_mana", 50)
+        self.equipment: Dict[str, str] = getattr(identity, "equipment", {})
+        self.party_id: Optional[str] = getattr(identity, "party_id", None)
+        self.title: str = getattr(identity, "title", "Adventurer")
+        self.dungeon_clears: int = getattr(identity, "dungeon_clears", 0)
+        self.monsters_slain: int = getattr(identity, "monsters_slain", 0)
 
     def get_profile_dict(self) -> Dict[str, Any]:
         return {
@@ -58,7 +72,19 @@ class NPCAgent:
             "avatar_color": self.identity.avatar_color,
             "sprite_name": getattr(self.identity, "sprite_name", "Klaus_Mueller"),
             "current_location": self.current_location,
-            "wealth": self.wealth
+            "wealth": self.wealth,
+            "rpg_class": self.rpg_class,
+            "role": self.role,
+            "level": self.level,
+            "hp": self.hp,
+            "max_hp": self.max_hp,
+            "mana": self.mana,
+            "max_mana": self.max_mana,
+            "equipment": self.equipment,
+            "party_id": self.party_id,
+            "title": self.title,
+            "dungeon_clears": self.dungeon_clears,
+            "monsters_slain": self.monsters_slain
         }
 
     def add_memory(self, content: str, sim_minute: int, memory_type: str = "short_term", importance: float = 5.0) -> MemoryItem:
@@ -115,9 +141,16 @@ class NPCAgent:
         self.last_sim_hour = sim_hour
         self.last_sim_minute = sim_minute
 
-        # 1. Biological needs decay
+        # 1. Biological needs decay & Passive RPG Regeneration
         self.needs.tick_decay(minutes_passed=1, current_activity=self.current_activity)
         self.emotions.update_from_needs(self.needs.to_dict())
+
+        # Passive HP and Mana regeneration when resting, sleeping, or in tavern/inn
+        if "rest" in self.current_activity.lower() or "sleep" in self.current_activity.lower() or self.current_location in ["tavern", "inn", "guild_hall"]:
+            if self.hp < self.max_hp:
+                self.hp = min(self.max_hp, self.hp + 2)
+            if self.mana < self.max_mana:
+                self.mana = min(self.max_mana, self.mana + 3)
 
         # 2. Movement along path
         if self.path_queue:
@@ -246,6 +279,18 @@ class NPCAgent:
             "needs": self.needs.to_dict(),
             "emotion": self.emotions.to_dict(),
             "wealth": round(self.wealth, 1),
+            "rpg_class": self.rpg_class,
+            "role": self.role,
+            "level": self.level,
+            "hp": self.hp,
+            "max_hp": self.max_hp,
+            "mana": self.mana,
+            "max_mana": self.max_mana,
+            "equipment": self.equipment,
+            "party_id": self.party_id,
+            "title": self.title,
+            "dungeon_clears": self.dungeon_clears,
+            "monsters_slain": self.monsters_slain,
             "memory_count": len(self.memory.memories),
             "plan_summary": self.planner.plan_summary,
             "current_plan_step": self.planner.get_current_step(getattr(self, "last_sim_hour", 7), getattr(self, "last_sim_minute", 0)).model_dump() if self.planner.schedule else None,

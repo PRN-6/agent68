@@ -6,7 +6,7 @@ interface SimulationStore {
   mapMetadata: MapMetadata | null;
   selectedNpcId: string | null;
   selectedLocationId: string | null;
-  activeTab: 'world' | 'npcs' | 'social' | 'timeline';
+  activeTab: 'world' | 'npcs' | 'parties' | 'social' | 'timeline';
   mapTheme: 'the_ville' | 'kenney_urban';
   isMemoryModalOpen: boolean;
   isGodModeOpen: boolean;
@@ -21,7 +21,7 @@ interface SimulationStore {
   setMapTheme: (theme: 'the_ville' | 'kenney_urban') => void;
   setSelectedNpcId: (id: string | null) => void;
   setSelectedLocationId: (id: string | null) => void;
-  setActiveTab: (tab: 'world' | 'npcs' | 'social' | 'timeline') => void;
+  setActiveTab: (tab: 'world' | 'npcs' | 'parties' | 'social' | 'timeline') => void;
   setIsMemoryModalOpen: (open: boolean) => void;
   setIsGodModeOpen: (open: boolean) => void;
   setIsTilesetModalOpen: (open: boolean) => void;
@@ -33,6 +33,7 @@ interface SimulationStore {
   stepSimulation: () => Promise<void>;
   setSpeed: (speed: number) => Promise<void>;
   resetSimulation: () => Promise<void>;
+  launchExpedition: (partyId: string) => Promise<void>;
   injectEvent: (eventType: string, description: string, locationId: string, significance?: number) => Promise<void>;
   fetchNpcMemories: (npcId: string, query?: string, typeFilter?: string) => Promise<void>;
 }
@@ -125,6 +126,14 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       await get().fetchInitialData();
     } catch (err) {
       console.error('Reset failed:', err);
+    }
+  },
+
+  launchExpedition: async (partyId: string) => {
+    try {
+      await fetch(`/api/parties/${partyId}/expedition`, { method: 'POST' });
+    } catch (err) {
+      console.error('Launch expedition failed:', err);
     }
   },
 

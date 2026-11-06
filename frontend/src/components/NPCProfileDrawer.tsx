@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSimulationStore } from '../store/simulationStore';
-import { X, Brain, Heart, Compass, Clock, Activity, Target, Users } from 'lucide-react';
+import { X, Brain, Heart, Compass, Clock, Activity, Shield, Swords, Sparkles, Coins, Trophy } from 'lucide-react';
 
 export const NPCProfileDrawer: React.FC = () => {
   const { state, selectedNpcId, setSelectedNpcId, setIsMemoryModalOpen, fetchNpcMemories, mapTheme } = useSimulationStore();
@@ -20,10 +20,18 @@ export const NPCProfileDrawer: React.FC = () => {
       ? `/assets/characters/profile/kenney/kenney_char_${((npc.id.charCodeAt(npc.id.length - 1) || 0) % 5) + 1}.png`
       : `/assets/characters/profile/${npc.sprite_name || 'Klaus_Mueller'}.png`;
 
+  const maxHp = npc.max_hp || 100;
+  const currentHp = Math.max(0, Math.min(npc.hp ?? 100, maxHp));
+  const hpPct = currentHp / maxHp;
+
+  const maxMana = npc.max_mana || 50;
+  const currentMana = Math.max(0, Math.min(npc.mana ?? 50, maxMana));
+  const manaPct = currentMana / maxMana;
+
   return (
     <div className="absolute right-0 top-0 bottom-0 w-96 bg-slate-900/95 backdrop-blur-xl border-l border-slate-700/70 shadow-2xl z-20 flex flex-col overflow-hidden text-slate-100 transition-all duration-300">
-      {/* Header */}
-      <div className="p-4 border-b border-slate-800 flex items-start justify-between bg-slate-950/60">
+      {/* MMORPG Header */}
+      <div className="p-4 border-b border-slate-800 flex items-start justify-between bg-slate-950/70">
         <div className="flex items-center space-x-3">
           <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-slate-800 border-2 border-slate-600 shadow-md flex-shrink-0 flex items-center justify-center">
             <img
@@ -34,14 +42,16 @@ export const NPCProfileDrawer: React.FC = () => {
             />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white flex items-center space-x-2">
-              <span>{npc.name}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-normal">
-                Age {npc.age}
+            <div className="flex items-center space-x-2">
+              <h2 className="text-base font-bold text-white">{npc.name}</h2>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-700 font-bold">
+                Lv.{npc.level || 1}
               </span>
-            </h2>
-            <p className="text-xs text-sky-400 font-medium">{npc.occupation}</p>
-            <p className="text-[11px] text-slate-400">Wealth: §{npc.wealth} | Memories: {npc.memory_count}</p>
+            </div>
+            <p className="text-xs text-sky-400 font-semibold">
+              {npc.rpg_class || 'Warrior'} • {npc.role || 'DPS'}
+            </p>
+            <p className="text-[11px] text-amber-300 italic">"{npc.title || 'Adventurer'}"</p>
           </div>
         </div>
         <button
@@ -54,7 +64,60 @@ export const NPCProfileDrawer: React.FC = () => {
 
       {/* Scrollable Body */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Status Card */}
+        {/* MMORPG Vital Combat Bars (HP & Mana) */}
+        <div className="bg-slate-800/80 rounded-xl p-3 border border-slate-700/60 space-y-2.5">
+          {/* HP Bar */}
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-emerald-400 font-bold flex items-center space-x-1">
+                <Heart className="w-3.5 h-3.5 fill-emerald-400" />
+                <span>Health (HP)</span>
+              </span>
+              <span className="font-mono text-slate-200">
+                {currentHp} / {maxHp}
+              </span>
+            </div>
+            <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-700/50">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-green-400 rounded-full transition-all duration-300"
+                style={{ width: `${hpPct * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Mana Bar */}
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-sky-400 font-bold flex items-center space-x-1">
+                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                <span>Mana (MP)</span>
+              </span>
+              <span className="font-mono text-slate-200">
+                {currentMana} / {maxMana}
+              </span>
+            </div>
+            <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-700/50">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-300"
+                style={{ width: `${manaPct * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Currency & Dungeon Clears */}
+          <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between text-xs">
+            <span className="text-yellow-400 flex items-center space-x-1 font-semibold">
+              <Coins className="w-3.5 h-3.5" />
+              <span>{Math.round(npc.wealth)} Gold Coins</span>
+            </span>
+            <span className="text-purple-300 flex items-center space-x-1 font-semibold">
+              <Trophy className="w-3.5 h-3.5" />
+              <span>{npc.dungeon_clears || 0} Clears</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Current Location & Activity */}
         <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400 flex items-center space-x-1">
@@ -72,16 +135,32 @@ export const NPCProfileDrawer: React.FC = () => {
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400 flex items-center space-x-1">
-              <Heart className="w-3.5 h-3.5 text-rose-400" />
-              <span>Emotion:</span>
+              <Swords className="w-3.5 h-3.5 text-rose-400" />
+              <span>Monsters Slain:</span>
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-rose-950/60 text-rose-300 border border-rose-800/50 font-semibold text-[11px]">
-              {npc.emotion.current} (Valence {npc.emotion.valence > 0 ? `+${npc.emotion.valence}` : npc.emotion.valence})
-            </span>
+            <span className="text-rose-300 font-bold">{npc.monsters_slain || 0} defeated</span>
           </div>
         </div>
 
-        {/* Biological Needs */}
+        {/* Equipment Loadout */}
+        {npc.equipment && Object.keys(npc.equipment).length > 0 && (
+          <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/50 space-y-2">
+            <h3 className="text-xs font-bold text-slate-300 flex items-center space-x-1.5 uppercase tracking-wider">
+              <Shield className="w-3.5 h-3.5 text-amber-400" />
+              <span>Equipment Loadout</span>
+            </h3>
+            <div className="space-y-1.5 text-xs">
+              {Object.entries(npc.equipment).map(([slot, item]) => (
+                <div key={slot} className="flex justify-between items-center p-1.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                  <span className="text-slate-400 capitalize">{slot}:</span>
+                  <span className="text-amber-200 font-semibold">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Vital Needs */}
         <div className="bg-slate-800/40 rounded-xl p-3 border border-slate-700/50 space-y-2.5">
           <h3 className="text-xs font-bold text-slate-300 flex items-center space-x-1.5 uppercase tracking-wider">
             <Activity className="w-3.5 h-3.5 text-amber-400" />
@@ -93,73 +172,6 @@ export const NPCProfileDrawer: React.FC = () => {
             <NeedBar label="Social" value={npc.needs.social} color="bg-purple-500" />
             <NeedBar label="Fun" value={npc.needs.fun} color="bg-pink-500" />
             <NeedBar label="Purpose" value={npc.needs.purpose} color="bg-emerald-500" />
-          </div>
-        </div>
-
-        {/* Big Five Personality */}
-        <div className="bg-slate-800/40 rounded-xl p-3 border border-slate-700/50 space-y-2.5">
-          <h3 className="text-xs font-bold text-slate-300 flex items-center space-x-1.5 uppercase tracking-wider">
-            <Brain className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Personality Matrix (Big Five)</span>
-          </h3>
-          <div className="space-y-1 text-[11px]">
-            <TraitBar label="Openness" value={npc.personality.openness} />
-            <TraitBar label="Conscientiousness" value={npc.personality.conscientiousness} />
-            <TraitBar label="Extraversion" value={npc.personality.extraversion} />
-            <TraitBar label="Agreeableness" value={npc.personality.agreeableness} />
-            <TraitBar label="Neuroticism" value={npc.personality.neuroticism} />
-          </div>
-        </div>
-
-        {/* Goals & Beliefs */}
-        <div className="bg-slate-800/40 rounded-xl p-3 border border-slate-700/50 space-y-2">
-          <h3 className="text-xs font-bold text-slate-300 flex items-center space-x-1.5 uppercase tracking-wider">
-            <Target className="w-3.5 h-3.5 text-rose-400" />
-            <span>Life Objectives & Beliefs</span>
-          </h3>
-          {npc.goals && npc.goals.length > 0 && (
-            <div className="space-y-1">
-              <span className="text-[11px] text-slate-400 font-semibold">Current Goal:</span>
-              <p className="text-xs text-sky-200 bg-sky-950/40 p-2 rounded-lg border border-sky-800/40">
-                {npc.goals[0]}
-              </p>
-            </div>
-          )}
-          {npc.beliefs && npc.beliefs.length > 0 && (
-            <div className="space-y-1">
-              <span className="text-[11px] text-slate-400 font-semibold">Core Belief:</span>
-              <p className="text-xs text-slate-300 bg-slate-900/60 p-2 rounded-lg border border-slate-800 italic">
-                "{npc.beliefs[0]}"
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Relationships */}
-        <div className="bg-slate-800/40 rounded-xl p-3 border border-slate-700/50 space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-300 flex items-center space-x-1.5 uppercase tracking-wider">
-              <Users className="w-3.5 h-3.5 text-blue-400" />
-              <span>Social Bonds ({npc.relationships.length})</span>
-            </h3>
-          </div>
-          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-            {npc.relationships.slice(0, 6).map((rel) => {
-              const targetNpc = state.npcs.find((n) => n.id === rel.target_npc_id);
-              return (
-                <div key={rel.target_npc_id} className="p-2 rounded-lg bg-slate-900/50 border border-slate-800 text-xs flex items-center justify-between">
-                  <div>
-                    <span className="font-semibold text-slate-200">{targetNpc?.name || rel.target_npc_id}</span>
-                    <span className="text-[10px] ml-1.5 px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
-                      {rel.relationship_type}
-                    </span>
-                  </div>
-                  <div className="text-right text-[11px] text-slate-400">
-                    <span>Trust: {Math.round(rel.trust)}%</span>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
 
@@ -199,18 +211,5 @@ const NeedBar: React.FC<{ label: string; value: number; color: string }> = ({ la
         style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
       />
     </div>
-  </div>
-);
-
-const TraitBar: React.FC<{ label: string; value: number }> = ({ label, value }) => (
-  <div className="flex items-center justify-between">
-    <span className="text-slate-400 w-28">{label}</span>
-    <div className="flex-1 bg-slate-700/40 rounded-full h-1.5 overflow-hidden mx-2">
-      <div
-        className="bg-indigo-400 h-full rounded-full"
-        style={{ width: `${Math.round(value * 100)}%` }}
-      />
-    </div>
-    <span className="text-slate-300 font-mono w-8 text-right">{Math.round(value * 100)}%</span>
   </div>
 );

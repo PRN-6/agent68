@@ -23,57 +23,43 @@ export const WorldCanvas: React.FC = () => {
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showCallouts, setShowCallouts] = useState<boolean>(true);
 
-  // Cached map & sprite images for both themes (Stanford Smallville & Kenney RPG Urban)
+  // Cached map & sprite images
   const themeImages = useRef<{
-    the_ville: { base: HTMLImageElement | null; fore: HTMLImageElement | null };
-    kenney_urban: { base: HTMLImageElement | null; fore: HTMLImageElement | null };
+    base: HTMLImageElement | null;
+    fore: HTMLImageElement | null;
   }>({
-    the_ville: { base: null, fore: null },
-    kenney_urban: { base: null, fore: null },
+    base: null,
+    fore: null,
   });
   const spriteCache = useRef<Map<string, HTMLImageElement>>(new Map());
 
   // Previous NPC positions to determine movement direction
   const prevPositions = useRef<Map<string, { x: number; y: number; dir: string }>>(new Map());
 
-  // Load Kenney Urban Maps on Mount (with cache-busting to ensure immediate display)
+  // Load MMORPG Fantasy Map on Mount
   useEffect(() => {
-    // 1. Primary Kenney Urban Map (asphalt roads, crosswalks, brick buildings, cars, park)
-    const uBase = new Image();
-    uBase.src = '/assets/the_ville/the_ville_base.png?v=kenney_urban_v2';
-    uBase.onload = () => {
-      themeImages.current.kenney_urban.base = uBase;
-      themeImages.current.the_ville.base = uBase;
+    const bImg = new Image();
+    bImg.src = '/assets/the_ville/the_ville_base.png?v=fantasy_realm_v4';
+    bImg.onload = () => {
+      themeImages.current.base = bImg;
     };
-    if (uBase.complete) {
-      themeImages.current.kenney_urban.base = uBase;
-      themeImages.current.the_ville.base = uBase;
+    if (bImg.complete) {
+      themeImages.current.base = bImg;
     }
 
-    const uFore = new Image();
-    uFore.src = '/assets/the_ville/the_ville_foreground.png?v=kenney_urban_v2';
-    uFore.onload = () => {
-      themeImages.current.kenney_urban.fore = uFore;
-      themeImages.current.the_ville.fore = uFore;
+    const fImg = new Image();
+    fImg.src = '/assets/the_ville/the_ville_foreground.png?v=fantasy_realm_v4';
+    fImg.onload = () => {
+      themeImages.current.fore = fImg;
     };
-    if (uFore.complete) {
-      themeImages.current.kenney_urban.fore = uFore;
-      themeImages.current.the_ville.fore = uFore;
+    if (fImg.complete) {
+      themeImages.current.fore = fImg;
     }
-
-    // 2. Stanford The Ville backup (if user wants to view the legacy Stanford map)
-    const vBase = new Image();
-    vBase.src = '/assets/the_ville/stanford_ville_base.png';
-    vBase.onload = () => { themeImages.current.the_ville.base = vBase; };
-
-    const vFore = new Image();
-    vFore.src = '/assets/the_ville/stanford_ville_foreground.png';
-    vFore.onload = () => { themeImages.current.the_ville.fore = vFore; };
   }, []);
 
-  // Preload character sprite sheets as NPCs appear (both Stanford & Kenney Urban sets)
+  // Preload character sprite sheets as NPCs appear
   useEffect(() => {
-    // 1. Preload 5 Kenney Urban Character Sprite Sheets from extracted zip
+    // Preload Kenney walk sheets
     for (let i = 1; i <= 5; i++) {
       const kKey = `kenney_char_${i}`;
       if (!spriteCache.current.has(kKey)) {
@@ -84,7 +70,7 @@ export const WorldCanvas: React.FC = () => {
       }
     }
 
-    // 2. Preload Stanford character sheets
+    // Preload Stanford character sheets
     if (state?.npcs) {
       for (const npc of state.npcs) {
         const spriteName = npc.sprite_name || 'Klaus_Mueller';
@@ -130,7 +116,7 @@ export const WorldCanvas: React.FC = () => {
     return () => window.removeEventListener('resize', updateCanvasDimensions);
   }, [updateCanvasDimensions]);
 
-  // Main Canvas Render Loop (Runs at 60 FPS for smooth sprite animation)
+  // Main Canvas Render Loop (60 FPS)
   useEffect(() => {
     let animationFrameId: number;
 
@@ -152,22 +138,47 @@ export const WorldCanvas: React.FC = () => {
       ctx.translate(pan.x, pan.y);
       ctx.scale(zoom, zoom);
 
-      // 1. Draw Active Pixel Art Base Map (Stanford Smallville or Kenney RPG Urban)
-      const activeBase = themeImages.current[mapTheme]?.base;
+      // 1. Draw Active Pixel Art Base Map
+      const activeBase = themeImages.current.base;
       if (activeBase && activeBase.complete) {
         ctx.drawImage(activeBase, 0, 0);
       } else {
-        // Fallback placeholder while loading
-        ctx.fillStyle = mapTheme === 'kenney_urban' ? '#56c1a4' : '#7ac943';
+        ctx.fillStyle = '#228B22';
         ctx.fillRect(0, 0, 4480, 3200);
       }
 
-      // 2. Draw 25 Animated Pixel Art Character Sprites
+      // 2. Draw Party Formation Bonds / Link Lines
+      if (state?.parties && state?.npcs) {
+        for (const party of state.parties) {
+          const members = state.npcs.filter((n) => party.member_ids.includes(n.id));
+          if (members.length > 1) {
+            ctx.save();
+            ctx.strokeStyle = party.banner_color || '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+
+            for (let i = 0; i < members.length - 1; i++) {
+              const p1 = members[i];
+              const p2 = members[i + 1];
+              const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+              // Only draw link when members are reasonably near each other (traveling or in same chamber)
+              if (dist < 18) {
+                ctx.beginPath();
+                ctx.moveTo(p1.x * 32 + 16, p1.y * 32 + 16);
+                ctx.lineTo(p2.x * 32 + 16, p2.y * 32 + 16);
+                ctx.stroke();
+              }
+            }
+            ctx.restore();
+          }
+        }
+      }
+
+      // 3. Draw 25 Animated Pixel Art Adventurers
       if (state?.npcs) {
         const animStep = Math.floor((Date.now() / 180) % 4);
 
         for (const npc of state.npcs) {
-          // World coordinates: 1 unit = 32 pixels
           const px = npc.x * 32;
           const py = npc.y * 32;
 
@@ -189,18 +200,18 @@ export const WorldCanvas: React.FC = () => {
 
           const isSelected = selectedNpcId === npc.id;
 
-          // Selection Glow
+          // Selection Glow Ring
           if (isSelected) {
             ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
             ctx.beginPath();
-            ctx.arc(px + 16, py + 16, 24, 0, Math.PI * 2);
+            ctx.arc(px + 16, py + 16, 26, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
             ctx.stroke();
           }
 
-          // Draw Character Sprite (select Kenney character when urban theme is active)
+          // Sprite Rendering
           let spriteKey = npc.sprite_name || 'Klaus_Mueller';
           if (mapTheme === 'kenney_urban') {
             const charNum = ((npc.id.charCodeAt(npc.id.length - 1) || 0) % 5) + 1;
@@ -209,16 +220,14 @@ export const WorldCanvas: React.FC = () => {
           const spriteImg = spriteCache.current.get(spriteKey);
 
           if (spriteImg && spriteImg.complete) {
-            // Source coordinates from atlas
             let srcY = 0; // down
             if (direction === 'left') srcY = 32;
             else if (direction === 'right') srcY = 64;
             else if (direction === 'up') srcY = 96;
 
             const isMoving = npc.is_moving;
-            const srcX = isMoving ? animStep * 32 : 32; // idle is frame 1 (x=32)
+            const srcX = isMoving ? animStep * 32 : 32;
 
-            // Draw 32x32 pixel art sprite scaled slightly for visibility
             ctx.drawImage(
               spriteImg,
               srcX,
@@ -246,71 +255,129 @@ export const WorldCanvas: React.FC = () => {
             ctx.fillText(npc.name[0], px + 16, py + 20);
           }
 
-          // Initial & Speech Indicator Above Head (e.g., KM: 💬, AC: ☕, JL: 💬)
+          // MMORPG Micro HP Bar above head
+          const maxHp = npc.max_hp || 100;
+          const currentHp = Math.max(0, Math.min(npc.hp ?? 100, maxHp));
+          const hpPct = currentHp / maxHp;
+          const hpBarW = 32;
+          const hpBarH = 4;
+          const hpBarX = px;
+          const hpBarY = py - 7;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          ctx.fillRect(hpBarX - 1, hpBarY - 1, hpBarW + 2, hpBarH + 2);
+          ctx.fillStyle = hpPct > 0.5 ? '#22c55e' : hpPct > 0.25 ? '#eab308' : '#ef4444';
+          ctx.fillRect(hpBarX, hpBarY, hpBarW * hpPct, hpBarH);
+
+          // Activity Speech Bubble above HP Bar
           const initials = npc.name
             .split(' ')
             .map((w) => w[0])
             .join('');
 
-          // Speech Bubble Tag (Exactly matching Stanford paper style)
           ctx.fillStyle = '#ffffff';
           ctx.strokeStyle = '#334155';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.roundRect(px - 10, py - 20, 52, 16, 4);
+          ctx.roundRect(px - 12, py - 24, 56, 15, 3);
           ctx.fill();
           ctx.stroke();
 
           // Tail
           ctx.beginPath();
-          ctx.moveTo(px + 12, py - 4);
-          ctx.lineTo(px + 16, py);
-          ctx.lineTo(px + 20, py - 4);
+          ctx.moveTo(px + 12, py - 9);
+          ctx.lineTo(px + 16, py - 6);
+          ctx.lineTo(px + 20, py - 9);
           ctx.fillStyle = '#ffffff';
           ctx.fill();
 
           ctx.fillStyle = '#0f172a';
-          ctx.font = 'bold 9px system-ui';
+          ctx.font = 'bold 8px system-ui';
           ctx.textAlign = 'left';
-          ctx.fillText(`${initials}:`, px - 6, py - 9);
+          ctx.fillText(`${initials}:`, px - 8, py - 13);
 
-          // Icon in bubble
-          const isConversing = npc.current_activity.toLowerCase().includes('converse') || npc.current_activity.toLowerCase().includes('social');
-          const isEating = npc.current_activity.toLowerCase().includes('eat') || npc.current_activity.toLowerCase().includes('coffee');
-          const isResting = npc.current_activity.toLowerCase().includes('sleep') || npc.current_activity.toLowerCase().includes('rest');
-
+          // Activity Icon
           let icon = '💬';
-          if (isEating) icon = '☕';
-          else if (isResting) icon = '💤';
-          else if (!isConversing) icon = '...';
+          const act = npc.current_activity.toLowerCase();
+          if (act.includes('fight') || act.includes('boss') || act.includes('crypt') || act.includes('skeleton')) icon = '⚔️';
+          else if (act.includes('loot') || act.includes('vault') || act.includes('chest')) icon = '💰';
+          else if (act.includes('ale') || act.includes('toast') || act.includes('tavern')) icon = '🍺';
+          else if (act.includes('heal') || act.includes('holy')) icon = '✨';
+          else if (act.includes('sleep') || act.includes('rest')) icon = '💤';
+          else if (act.includes('march') || act.includes('bridge')) icon = '🛡️';
 
-          ctx.font = '9px system-ui';
-          ctx.fillText(icon, px + 18, py - 9);
+          ctx.font = '8px system-ui';
+          ctx.fillText(icon, px + 20, py - 13);
 
-          // Name label below sprite
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-          ctx.fillRect(px - 14, py + 34, 60, 14);
+          // Name & MMORPG Class / Level Tag below character
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.fillRect(px - 18, py + 34, 68, 22);
           ctx.fillStyle = isSelected ? '#38bdf8' : '#f8fafc';
-          ctx.font = isSelected ? 'bold 10px system-ui' : '9px system-ui';
+          ctx.font = 'bold 9px system-ui';
           ctx.textAlign = 'center';
           ctx.fillText(npc.name.split(' ')[0], px + 16, py + 44);
+
+          // Class Tag
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = '8px system-ui';
+          ctx.fillText(`Lv.${npc.level || 1} ${npc.rpg_class || 'Hero'}`, px + 16, py + 53);
           ctx.textAlign = 'left';
         }
       }
 
-      // 3. Draw Foreground Layer (Roofs and tree canopies for depth sorting)
-      const activeFore = themeImages.current[mapTheme]?.fore;
+      // 4. Draw Foreground Layer (Roofs, tree canopies for depth sorting)
+      const activeFore = themeImages.current.fore;
       if (activeFore && activeFore.complete) {
         ctx.drawImage(activeFore, 0, 0);
       }
 
-      // 4. Day / Night & Weather Atmospheric Lighting Overlay
+      // 5. Dungeon Ambient Darkness & Torchlight System
+      // Sector X >= 110 tiles (3520px) is the Subterranean Dungeon
+      const dungeonStartX = 110 * 32;
+      ctx.save();
+      // Dungeon Darkness Mask
+      ctx.fillStyle = 'rgba(10, 5, 20, 0.55)';
+      ctx.fillRect(dungeonStartX, 0, 4480 - dungeonStartX, 3200);
+
+      // Glowing Torch Light Radii at Dungeon Brazier points & around adventurers in dungeon
+      const torchLocations = [
+        [114 * 32 + 16, 47 * 32 + 16],
+        [114 * 32 + 16, 53 * 32 + 16],
+        [124 * 32 + 16, 71 * 32 + 16],
+        [132 * 32 + 16, 71 * 32 + 16],
+        [124 * 32 + 16, 85 * 32 + 16],
+        [132 * 32 + 16, 85 * 32 + 16],
+        [128 * 32, 78 * 32], // Boss summon altar
+      ];
+
+      if (state?.npcs) {
+        for (const npc of state.npcs) {
+          if (npc.x >= 110) {
+            torchLocations.push([npc.x * 32 + 16, npc.y * 32 + 16]);
+          }
+        }
+      }
+
+      for (const [tx, ty] of torchLocations) {
+        const rad = 65 + Math.sin(Date.now() / 200 + tx) * 5;
+        const grad = ctx.createRadialGradient(tx, ty, 5, tx, ty, rad);
+        grad.addColorStop(0, 'rgba(254, 215, 170, 0.45)');
+        grad.addColorStop(0.5, 'rgba(239, 68, 68, 0.18)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(tx, ty, rad, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // 6. Day / Night & Weather Atmospheric Lighting
       if (state?.clock) {
         const hour = state.clock.sim_hour;
         let overlayColor = 'rgba(0, 0, 0, 0)';
 
         if (hour >= 21 || hour < 5) {
-          overlayColor = 'rgba(15, 23, 42, 0.45)';
+          overlayColor = 'rgba(15, 23, 42, 0.42)';
         } else if (hour >= 5 && hour < 7) {
           overlayColor = 'rgba(244, 114, 182, 0.12)';
         } else if (hour >= 17 && hour < 21) {
@@ -343,7 +410,7 @@ export const WorldCanvas: React.FC = () => {
 
     animationFrameId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [pan, zoom, state, selectedNpcId]);
+  }, [pan, zoom, state, selectedNpcId, mapTheme]);
 
   // Click on canvas to select NPC or Location
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -353,13 +420,12 @@ export const WorldCanvas: React.FC = () => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Convert screen coordinates to world pixel coords
     const worldPx = (mouseX - pan.x) / zoom;
     const worldPy = (mouseY - pan.y) / zoom;
     const worldTileX = worldPx / 32;
     const worldTileY = worldPy / 32;
 
-    // Check if clicked an NPC (within 24px)
+    // Check if clicked an NPC
     if (state?.npcs) {
       for (const npc of state.npcs) {
         const dx = npc.x * 32 + 16 - worldPx;
@@ -415,7 +481,7 @@ export const WorldCanvas: React.FC = () => {
     setZoom((prev) => Math.max(0.2, Math.min(prev * zoomFactor, 2.2)));
   };
 
-  // Zoom directly to specific Smallville landmark
+  // Zoom directly to specific fantasy landmark
   const zoomToSector = (tileX: number, tileY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -468,49 +534,79 @@ export const WorldCanvas: React.FC = () => {
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5" />
-          <span>Callout Boxes</span>
+          <span>Chronicle Callouts</span>
         </button>
         <span className="text-slate-600">|</span>
         <button
-          onClick={() => zoomToSector(75, 45)}
+          onClick={() => zoomToSector(44, 45)}
           className="hover:text-white text-slate-400 underline"
         >
           Reset View
         </button>
       </div>
 
-      {/* Quick Landmark Bookmarks */}
-      <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/60 shadow-xl text-xs text-slate-300 flex items-center space-x-2 z-10">
-        <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">Kenney Urban Town:</span>
+      {/* MMORPG Sector Quick Jump Bookmarks */}
+      <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/60 shadow-xl text-xs text-slate-300 flex items-center space-x-2 z-10 overflow-x-auto max-w-[85vw]">
+        <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider whitespace-nowrap">Realm Sectors:</span>
         <button
-          onClick={() => zoomToSector(77, 21)}
-          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+          onClick={() => zoomToSector(44, 20)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition whitespace-nowrap"
         >
-          ☕ Hobbs Cafe
+          🛡️ Guild Hall
         </button>
         <button
-          onClick={() => zoomToSector(84, 47)}
-          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+          onClick={() => zoomToSector(20, 22)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition whitespace-nowrap"
         >
-          🏪 Willows Market
+          🍺 Dragon's Flagon
         </button>
         <button
-          onClick={() => zoomToSector(27, 46)}
-          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+          onClick={() => zoomToSector(41, 40)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition whitespace-nowrap"
         >
-          🌳 Johnson Park
+          ⛲ Town Square
         </button>
         <button
-          onClick={() => zoomToSector(57, 22)}
-          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+          onClick={() => zoomToSector(18, 48)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition whitespace-nowrap"
         >
-          🍺 Rose & Crown Pub
+          🔨 Ironforge
         </button>
         <button
-          onClick={() => zoomToSector(116, 26)}
-          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+          onClick={() => zoomToSector(66, 48)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition whitespace-nowrap"
         >
-          🎓 Oak Hill College
+          🧪 Arcane Sanctum
+        </button>
+        <button
+          onClick={() => zoomToSector(19, 74)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition whitespace-nowrap"
+        >
+          ⚔️ Hero Arena
+        </button>
+        <button
+          onClick={() => zoomToSector(83, 50)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition whitespace-nowrap"
+        >
+          🌉 Stone Bridge
+        </button>
+        <button
+          onClick={() => zoomToSector(100, 50)}
+          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition whitespace-nowrap"
+        >
+          🌲 Whispering Forest
+        </button>
+        <button
+          onClick={() => zoomToSector(115, 50)}
+          className="px-2 py-1 rounded-lg bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-700 transition whitespace-nowrap"
+        >
+          💀 Dungeon Gate
+        </button>
+        <button
+          onClick={() => zoomToSector(128, 79)}
+          className="px-2 py-1 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-200 border border-rose-700 transition whitespace-nowrap"
+        >
+          🔥 Abyssal Boss
         </button>
       </div>
 
@@ -519,67 +615,63 @@ export const WorldCanvas: React.FC = () => {
         <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">Map Style:</span>
         <button
           onClick={() => setMapTheme(mapTheme === 'the_ville' ? 'kenney_urban' : 'the_ville')}
-          className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg border font-semibold text-xs transition ${
-            mapTheme === 'kenney_urban'
-              ? 'bg-amber-600/30 text-amber-300 border-amber-500/60 shadow-inner'
-              : 'bg-indigo-600/30 text-indigo-300 border-indigo-500/60 shadow-inner'
-          }`}
-          title="Toggle between Stanford Smallville and Kenney RPG Urban Pack"
+          className="flex items-center space-x-1 px-2.5 py-1 rounded-lg border font-semibold text-xs transition bg-indigo-600/30 text-indigo-300 border-indigo-500/60 shadow-inner"
+          title="Toggle fantasy characters & urban sprite styles"
         >
-          <span>{mapTheme === 'the_ville' ? '🏛️ Stanford Ville' : '🏙️ Kenney Urban'}</span>
+          <span>{mapTheme === 'the_ville' ? '⚔️ Fantasy RPG' : '🏙️ Kenney Urban'}</span>
         </button>
         <button
           onClick={() => setIsTilesetModalOpen(true)}
           className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs transition flex items-center space-x-1"
-          title="Inspect Kenney RPG Urban Pack Tileset Atlas"
+          title="Inspect Kenney RPG Tileset Atlas"
         >
           <span>📦 Kenney Pack</span>
         </button>
       </div>
 
-      {/* Stanford Generative Agents Magnified Callout Boxes (Matching Paper Visualization!) */}
+      {/* Stanford Generative Agents Magnified Callout Boxes (MMORPG Fantasy Themed!) */}
       {showCallouts && (
         <>
-          {/* Callout 1: Hobbs Cafe Conversation */}
+          {/* Callout 1: Guild Hall Expedition Briefing */}
           <div
-            className="absolute top-16 left-80 w-80 bg-slate-900/95 backdrop-blur-md border-2 border-sky-500/70 rounded-2xl shadow-2xl p-3 z-10 text-slate-100 transition-all hover:scale-105 cursor-pointer"
-            onClick={() => zoomToSector(77, 21)}
+            className="absolute top-20 left-64 w-84 bg-slate-900/95 backdrop-blur-md border-2 border-sky-500/70 rounded-2xl shadow-2xl p-3 z-10 text-slate-100 transition-all hover:scale-105 cursor-pointer"
+            onClick={() => zoomToSector(44, 20)}
           >
             <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 mb-2">
               <span className="font-bold text-xs text-sky-400 flex items-center space-x-1">
-                <span>☕</span>
-                <span>Joining for coffee at a cafe</span>
+                <span>🛡️</span>
+                <span>Expedition Council at Adventurer's Guild</span>
               </span>
-              <span className="text-[10px] text-slate-400 font-mono">Hobbs Cafe</span>
+              <span className="text-[10px] text-slate-400 font-mono">Guild Hall</span>
             </div>
             <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80 font-mono text-[11px] space-y-1 text-slate-300">
-              <p className="text-pink-300">
-                <span className="font-bold text-white">[Clara]:</span> "Hey Marcus, mind if I join you for warm espresso?"
+              <p className="text-indigo-300">
+                <span className="font-bold text-white">[Sir Arthur]:</span> "Clara, ensure the Vanguard has enough holy blessings. The Crypt awaits."
               </p>
-              <p className="text-sky-300">
-                <span className="font-bold text-white">[Marcus]:</span> "Not at all, Clara. How is your morning baking going?"
+              <p className="text-pink-300">
+                <span className="font-bold text-white">[Clara]:</span> "The Light protects us, Commander. My staff of renewal is ready."
               </p>
             </div>
           </div>
 
-          {/* Callout 2: Willows Market Gossip */}
+          {/* Callout 2: Shadow Crypts Boss Encounter */}
           <div
-            className="absolute bottom-16 right-96 w-84 bg-slate-900/95 backdrop-blur-md border-2 border-amber-500/70 rounded-2xl shadow-2xl p-3 z-10 text-slate-100 transition-all hover:scale-105 cursor-pointer"
-            onClick={() => zoomToSector(84, 47)}
+            className="absolute bottom-16 right-96 w-88 bg-slate-900/95 backdrop-blur-md border-2 border-rose-500/70 rounded-2xl shadow-2xl p-3 z-10 text-slate-100 transition-all hover:scale-105 cursor-pointer"
+            onClick={() => zoomToSector(128, 79)}
           >
             <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 mb-2">
-              <span className="font-bold text-xs text-amber-400 flex items-center space-x-1">
-                <span>💬</span>
-                <span>Sharing news with townsfolk</span>
+              <span className="font-bold text-xs text-rose-400 flex items-center space-x-1">
+                <span>🔥</span>
+                <span>Confronting the Abyssal Overlord</span>
               </span>
-              <span className="text-[10px] text-slate-400 font-mono">The Willows Market</span>
+              <span className="text-[10px] text-slate-400 font-mono">Floor 3 - Sanctum</span>
             </div>
             <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800/80 font-mono text-[11px] space-y-1 text-slate-300">
-              <p className="text-amber-300">
-                <span className="font-bold text-white">[Samuel]:</span> "Have you heard anything new about the Autumn festival plans?"
+              <p className="text-red-400">
+                <span className="font-bold text-white">[Tamara]:</span> "Raise your shields! The Dragon is channeling void fire!"
               </p>
-              <p className="text-emerald-300">
-                <span className="font-bold text-white">[Sophie]:</span> "Yes! Arthur Vance is drafting the civic notice today."
+              <p className="text-amber-300">
+                <span className="font-bold text-white">[Wolfgang]:</span> "I will counter with Meteor Storm! Stand firm, Crimson Dawn!"
               </p>
             </div>
           </div>
